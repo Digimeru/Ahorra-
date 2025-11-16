@@ -43,7 +43,7 @@ export default function AutenScreen({ navigation }) {
       <View style={styles.cardWrapper}>
         <View style={styles.header}>
           <View style={styles.logoBox}>
-            <Text style={styles.logoIcon}>💰</Text>
+            <Text style={styles.logoIcon}>👛</Text>
           </View>
           <Text style={styles.title}>Ahorra+ App</Text>
           <Text style={styles.subtitle}>Gestiona tus finanzas personales</Text>
