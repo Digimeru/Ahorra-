@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View,  Text,  ScrollView,  TouchableOpacity,  StyleSheet, SafeAreaView } from 'react-native';
+import { View,  Text,  ScrollView,  TouchableOpacity,  StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Home({ navigation }) {
   // Datos para las gráficas
@@ -88,14 +89,16 @@ export default function Home({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Ahorra+ App</Text>
-        <Text style={styles.headerSubtitle}>Resumen Financiero</Text>
-      </View>
+    <View style={styles.container}>
+      {/* Header - Ahora pegado arriba */}
+      <SafeAreaView style={styles.headerSafeArea}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Ahorra+ App</Text>
+          <Text style={styles.headerSubtitle}>Resumen Financiero</Text>
+        </View>
+      </SafeAreaView>
       
-      <ScrollView style={styles.main}>
+      <ScrollView style={styles.main} contentContainerStyle={styles.scrollContent}>
         {/* Card del Balance */}
         <View style={styles.balanceCard}>
           <Text style={styles.balanceTitle}>Balance Total</Text>
@@ -188,7 +191,7 @@ export default function Home({ navigation }) {
             <Text style={styles.sectionTitle}>Transacciones Recientes</Text>
             <TouchableOpacity 
               style={styles.seeAllButton}
-              onPress={() => navigation.navigate('Transactions')}
+              onPress={() => navigation.navigate('Transacciones')}
             >
               <Text style={styles.seeAllText}>Ver todas</Text>
             </TouchableOpacity>
@@ -213,40 +216,42 @@ export default function Home({ navigation }) {
       </ScrollView>
 
       {/* Navigation Inferior */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity 
-          style={styles.navButton}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Text style={[styles.navIcon, styles.navIconActive]}>🏠</Text>
-          <Text style={[styles.navText, styles.navTextActive]}>Inicio</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navButton}
-          onPress={() => navigation.navigate('Transactions')}
-        >
-          <Text style={styles.navIcon}>💰</Text>
-          <Text style={styles.navText}>Transacciones</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navButton}
-          onPress={() => navigation.navigate('Budgets')}
-        >
-          <Text style={styles.navIcon}>📊</Text>
-          <Text style={styles.navText}>Presupuestos</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navButton}
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Text style={styles.navIcon}>👤</Text>
-          <Text style={styles.navText}>Perfil</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      <SafeAreaView style={styles.navSafeArea}>
+        <View style={styles.bottomNav}>
+          <TouchableOpacity 
+            style={styles.navButton}
+            onPress={() => navigation.navigate('Home')}
+          >
+            <Text style={[styles.navIcon, styles.navIconActive]}>🏠</Text>
+            <Text style={[styles.navText, styles.navTextActive]}>Inicio</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.navButton}
+            onPress={() => navigation.navigate('Transacciones')}
+          >
+            <Text style={styles.navIcon}>💰</Text>
+            <Text style={styles.navText}>Transacciones</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.navButton}
+            onPress={() => navigation.navigate('Presupuestos')}
+          >
+            <Text style={styles.navIcon}>📊</Text>
+            <Text style={styles.navText}>Presupuestos</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.navButton}
+            onPress={() => navigation.navigate('Perfil')}
+          >
+            <Text style={styles.navIcon}>👤</Text>
+            <Text style={styles.navText}>Perfil</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -255,25 +260,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f9fafb',
   },
+  headerSafeArea: {
+    backgroundColor: '#16a34a',
+  },
   header: {
     backgroundColor: '#16a34a',
-    paddingVertical: 20,
+    paddingVertical: 1,
     paddingHorizontal: 16,
     alignItems: 'center',
   },
   headerTitle: {
     color: '#ffffff',
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 1,
   },
   headerSubtitle: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 10,
     opacity: 0.9,
   },
   main: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 16,
     paddingVertical: 20,
   },
@@ -486,7 +496,10 @@ const styles = StyleSheet.create({
   expenseAmount: {
     color: '#dc2626',
   },
-  // Navigate inferior
+  // Navegación inferior
+  navSafeArea: {
+    backgroundColor: '#ffffff',
+  },
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: '#ffffff',

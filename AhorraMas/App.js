@@ -4,6 +4,9 @@ import 'react-native-gesture-handler';
 
 import Home from './screens/Home';
 import AutenScreen from './screens/AutenScreen';
+import Perfil from './screens/Perfil';
+import Presupuestos from './screens/Presupuestos';
+import Transacciones from './screens/Transacciones';
 
 const Stack = createNativeStackNavigator();
 
@@ -20,6 +23,21 @@ export default function App() {
           name="Home" 
           component={Home} 
           options={{ title: 'Home Page' }}
+        />
+        <Stack.Screen 
+          name="Perfil" 
+          component={Perfil} 
+          options={{ title: 'Perfil' }}
+        />
+        <Stack.Screen 
+          name="Presupuestos" 
+          component={Presupuestos} 
+          options={{ title: 'Presupuestos' }}
+        />
+        <Stack.Screen 
+          name="Transacciones" 
+          component={Transacciones} 
+          options={{ title: 'Transacciones' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -140,7 +140,7 @@ export default function AutenScreen({ navigation }) {
                     <Text style={styles.label}>Nombre completo</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="Juan Pérez"
+                      placeholder="Nombre y Apellido"
                       value={registerName}
                       onChangeText={setRegisterName}
                       editable={!isLoading}
