@@ -4,7 +4,7 @@ import { View, Text, StyleSheet } from 'react-native';
 export default function Transacciones() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Perfil</Text>
+      <Text style={styles.title}>Transacciones</Text>
       <Text>Esta pantalla muestra la información del usuario.</Text>
     </View>
   );
