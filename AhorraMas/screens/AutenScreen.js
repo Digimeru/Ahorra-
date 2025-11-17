@@ -263,11 +263,11 @@ const styles = StyleSheet.create({
     color: "#1f2937",
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -278,15 +278,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   cardDescription: {
     fontSize: 14,
-    color: '#666',
-  },
-  cardContent: {
-    // Estilos para el contenido de la card
+    color: "#666",
   },
   form: {
     gap: 16,
@@ -296,27 +293,28 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 4,
     padding: 12,
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#16a34a',
+    backgroundColor: "#16a34a",
     padding: 16,
     borderRadius: 4,
-    alignItems: 'center',
+    alignItems: "center",
   },
   buttonDisabled: {
-    backgroundColor: '#9ca3af',
+    backgroundColor: "#9ca3af",
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
+
