@@ -113,6 +113,12 @@ export default function AutenScreen({ navigation }) {
                       secureTextEntry={true}
                       editable={!isLoading}
                     />
+                    <TouchableOpacity
+                      style={{ alignSelf: 'flex-end', marginBottom: 16}}
+                      onPress={() => navigation.navigate('RecuperacionScreen')}
+                      >
+                        <Text style={{ color: '#16a34a', fontWeight: '500', fontSize: 14}}> ¿Olvidaste tu contraseña? </Text>
+                    </TouchableOpacity>
                   </View>
                   <TouchableOpacity
                     style={[styles.button, isLoading && styles.buttonDisabled]}

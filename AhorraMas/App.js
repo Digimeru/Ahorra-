@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import 'react-native-gesture-handler';
 import Home from './screens/Home';
 import AutenScreen from './screens/AutenScreen';
+import RecoveryScreen from './screens/RecuperacionScreen';
 import Perfil from './screens/Perfil';
 import Presupuestos from './screens/Presupuestos';
 import Transacciones from './screens/Transacciones';
@@ -67,6 +68,12 @@ export default function App() {
           component={AutenScreen}
           options={{ headerShown: false }} 
         />
+
+        <Stack.Screen
+          name='RecuperacionScreen'
+          component={RecoveryScreen}
+          options={{ headerShown: false}}
+        />  
 
         <Stack.Screen 
           name="Main" 
