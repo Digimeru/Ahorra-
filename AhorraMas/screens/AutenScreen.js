@@ -181,6 +181,7 @@ export default function AutenScreen({ navigation }) {
                       value={registerPhone}
                       onChangeText={setRegisterPhone}
                       editable={!isLoading}
+                      inputMode='phone-pad'
                     />
                   </View>
                   <TouchableOpacity

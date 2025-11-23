@@ -456,8 +456,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#16a34a',
-    paddingHorizontal: 9,
-    paddingVertical: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 10,
     borderRadius: 8,
   },
   addButtonIcon: {
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   budgetsGrid: {

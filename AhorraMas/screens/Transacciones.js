@@ -489,6 +489,7 @@ export default function Transacciones({ navigation }) {
         transparent={true}
         onRequestClose={() => setEditModalVisible(false)}
       >
+        <ScrollView>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Editar Transacción</Text>
@@ -573,6 +574,7 @@ export default function Transacciones({ navigation }) {
             )}
           </View>
         </View>
+        </ScrollView>
       </Modal>
     </View>
   );
@@ -908,7 +910,6 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 400,
-    maxHeight: '80%',
   },
   modalTitle: {
     fontSize: 20,
