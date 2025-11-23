@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet,TextInput,Modal,Alert} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Datos de ejemplo (en una app real vendrían de un contexto o estado global)
@@ -405,43 +405,6 @@ export default function Presupuesto({ navigation }) {
           </View>
         </View>
       </Modal>
-
-      {/* Navegación Inferior */}
-      <SafeAreaView style={styles.navSafeArea}>
-        <View style={styles.bottomNav}>
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigation.navigate('Home')}
-          >
-            <Text style={styles.navIcon}>🏠</Text>
-            <Text style={styles.navText}>Inicio</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigation.navigate('Transacciones')}
-          >
-            <Text style={styles.navIcon}>💰</Text>
-            <Text style={styles.navText}>Transacciones</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigation.navigate('Presupuestos')}
-          >
-            <Text style={[styles.navIcon, styles.navIconActive]}>📊</Text>
-            <Text style={[styles.navText, styles.navTextActive]}>Presupuestos</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigation.navigate('Perfil')}
-          >
-            <Text style={styles.navIcon}>👤</Text>
-            <Text style={styles.navText}>Perfil</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View,  Text,  ScrollView,  TouchableOpacity,  StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Home({ navigation }) {
@@ -130,7 +130,10 @@ export default function Home({ navigation }) {
         {/* Comparación Ingresos vs Gastos */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Comparación Ingresos vs Gastos</Text>
-          <ComparisonChart />
+          <View style={{ marginTop: 10 }}>
+            <ComparisonChart />
+          </View>
+          
         </View>
 
         {/* Ingresos por Categoría */}
@@ -214,43 +217,6 @@ export default function Home({ navigation }) {
           ))}
         </View>
       </ScrollView>
-
-      {/* Navigation Inferior */}
-      <SafeAreaView style={styles.navSafeArea}>
-        <View style={styles.bottomNav}>
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigation.navigate('Home')}
-          >
-            <Text style={[styles.navIcon, styles.navIconActive]}>🏠</Text>
-            <Text style={[styles.navText, styles.navTextActive]}>Inicio</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigation.navigate('Transacciones')}
-          >
-            <Text style={styles.navIcon}>💰</Text>
-            <Text style={styles.navText}>Transacciones</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigation.navigate('Presupuestos')}
-          >
-            <Text style={styles.navIcon}>📊</Text>
-            <Text style={styles.navText}>Presupuestos</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigation.navigate('Perfil')}
-          >
-            <Text style={styles.navIcon}>👤</Text>
-            <Text style={styles.navText}>Perfil</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
     </View>
   );
 }

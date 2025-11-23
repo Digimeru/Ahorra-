@@ -16,7 +16,7 @@ export default function AutenScreen({ navigation }) {
     setIsLoading(true);
     try {
       if (loginEmail && loginPassword) {
-        navigation.navigate("Home");
+        navigation.navigate("Main");
       } else {
         alert("Por favor completa todos los campos");
       }
@@ -29,7 +29,7 @@ export default function AutenScreen({ navigation }) {
     setIsLoading(true);
     try {
       if (registerName && registerEmail && registerPassword && registerPhone) {
-        navigation.navigate('Home');
+        navigation.navigate('Main');
       } else {
         alert("Por favor completa todos los campos");
       }
