@@ -309,13 +309,16 @@ export default function Transacciones({ navigation }) {
               />
             </View>
 
-            <TouchableOpacity 
-              style={styles.submitButton}
-              onPress={handleSubmit}
-            >
-              <Text style={styles.submitButtonIcon}>+Agregar</Text>
-              <Text style={styles.submitButtonText}></Text>
-            </TouchableOpacity>
+            <View style={{ justifyContent: 'center', alignItems: 'center' }}>
+              <TouchableOpacity 
+                style={[styles.button, styles.submitButton]}
+                onPress={handleSubmit}
+              >
+                <Text style={styles.submitButtonIcon}>+Agregar</Text>
+              </TouchableOpacity>
+
+            </View>
+            
           </View>
         </View>
 
@@ -728,14 +731,16 @@ const styles = StyleSheet.create({
   },
   // Botón de enviar
   submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#16a34a',
-    paddingVertical: 16,
-    borderRadius: 8,
-    marginTop: 8,
-  },
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '#16a34a',
+  paddingVertical: 16,
+  borderRadius: 8,
+  marginTop: 8,
+  borderWidth: 2,          
+  borderColor: '#ffffff',  
+},
   submitButtonIcon: {
     color: '#ffffff',
     textAlign: 'center',
@@ -745,6 +750,7 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#ffffff',
+    borderRadius: 4,
     fontSize: 10,
     fontWeight: '600',
   },
@@ -903,6 +909,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+
   },
   modalContent: {
     backgroundColor: '#ffffff',
