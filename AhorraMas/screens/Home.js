@@ -90,7 +90,7 @@ export default function Home({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Header - Ahora pegado arriba */}
+      {/* Header */}
       <SafeAreaView style={styles.headerSafeArea}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Ahorra+ App</Text>
@@ -109,7 +109,7 @@ export default function Home({ navigation }) {
           </Text>
         </View>
 
-        {/* Rápidos */}
+        {/* Datos rápidos */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>${(comparisonData.income / 1000).toFixed(0)}k</Text>

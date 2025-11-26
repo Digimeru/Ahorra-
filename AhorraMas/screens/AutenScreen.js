@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput } from 'react-native';
+import { Text, View, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { useState } from 'react';
 
 export default function AutenScreen({ navigation }) {
