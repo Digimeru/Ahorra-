@@ -1,41 +1,92 @@
-import { Text, View, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
-import { useState } from 'react';
+import { Text, View, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import UsuarioController from '../controllers/usuarioController'; // Ajusta la ruta según tu estructura
+
 
 export default function AutenScreen({ navigation }) {
-
   const [isLoading, setIsLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [registerName, setRegisterName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
-  const [registerPhone, setRegisterPhone] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [activeTab, setActiveTab] = useState("login");
 
+  // Inicializar el controlador al cargar el componente
+  useEffect(() => {
+    const init = async () => {
+      try {
+        await UsuarioController.initialize();
+        console.log('Base de datos inicializada');
+      } catch (error) {
+        console.error('Error inicializando base de datos:', error);
+        Alert.alert('Error', 'No se pudo inicializar la base de datos');
+      }
+    };
+
+    init();
+  }, []);
+
   const handleLogin = async () => {
+    if (!loginEmail || !loginPassword) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      if (loginEmail && loginPassword) {
+      const usuario = await UsuarioController.iniciarSesion(loginEmail, loginPassword);
+      
+      if (usuario) {
+        Alert.alert('Éxito', `¡Bienvenido ${usuario.nombre}!`);
         navigation.navigate("Main");
-      } else {
-        alert("Por favor completa todos los campos");
       }
+    } catch (error) {
+      Alert.alert('Error', error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRegister = async () => {
+    if (!registerName || !registerEmail || !registerPassword || !confirmPassword) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      if (registerName && registerEmail && registerPassword && registerPhone) {
-        navigation.navigate('Main');
-      } else {
-        alert("Por favor completa todos los campos");
-      }
+      const nuevoUsuario = await UsuarioController.registrarUsuario(
+        registerName,
+        registerEmail,
+        registerPassword,
+        confirmPassword
+      );
+      
+      Alert.alert('Éxito', `¡Cuenta creada exitosamente! Bienvenido ${nuevoUsuario.nombre}`);
+      
+      // Limpiar formulario y cambiar a login
+      setRegisterName("");
+      setRegisterEmail("");
+      setRegisterPassword("");
+      setConfirmPassword("");
+      setActiveTab("login");
+      
+    } catch (error) {
+      Alert.alert('Error', error.message);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const limpiarFormularios = () => {
+    setLoginEmail("");
+    setLoginPassword("");
+    setRegisterName("");
+    setRegisterEmail("");
+    setRegisterPassword("");
+    setConfirmPassword("");
   };
 
   return (
@@ -56,7 +107,10 @@ export default function AutenScreen({ navigation }) {
                 styles.tabButton,
                 activeTab === "login" && styles.tabButtonActive,
               ]}
-              onPress={() => setActiveTab("login")}
+              onPress={() => {
+                setActiveTab("login");
+                limpiarFormularios();
+              }}
             >
               <Text
                 style={[
@@ -72,7 +126,10 @@ export default function AutenScreen({ navigation }) {
                 styles.tabButton,
                 activeTab === "register" && styles.tabButtonActive,
               ]}
-              onPress={() => setActiveTab("register")}
+              onPress={() => {
+                setActiveTab("register");
+                limpiarFormularios();
+              }}
             >
               <Text
                 style={[
@@ -101,6 +158,8 @@ export default function AutenScreen({ navigation }) {
                       value={loginEmail}
                       onChangeText={setLoginEmail}
                       editable={!isLoading}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
                     />
                   </View>
                   <View style={styles.field}>
@@ -112,12 +171,15 @@ export default function AutenScreen({ navigation }) {
                       onChangeText={setLoginPassword}
                       secureTextEntry={true}
                       editable={!isLoading}
+                      autoCapitalize="none"
                     />
                     <TouchableOpacity
                       style={{ alignSelf: 'flex-end', marginBottom: 16}}
                       onPress={() => navigation.navigate('RecuperacionScreen')}
-                      >
-                        <Text style={{ color: '#16a34a', fontWeight: '500', fontSize: 14}}> ¿Olvidaste tu contraseña? </Text>
+                    >
+                      <Text style={{ color: '#16a34a', fontWeight: '500', fontSize: 14}}>
+                        ¿Olvidaste tu contraseña?
+                      </Text>
                     </TouchableOpacity>
                   </View>
                   <TouchableOpacity
@@ -143,7 +205,7 @@ export default function AutenScreen({ navigation }) {
               <View style={styles.cardContent}>
                 <View style={styles.form}>
                   <View style={styles.field}>
-                    <Text style={styles.label}>Nombre completo</Text>
+                    <Text style={styles.label}>Nombre completo *</Text>
                     <TextInput
                       style={styles.input}
                       placeholder="Nombre y Apellido"
@@ -153,36 +215,45 @@ export default function AutenScreen({ navigation }) {
                     />
                   </View>
                   <View style={styles.field}>
-                    <Text style={styles.label}>Correo electrónico</Text>
+                    <Text style={styles.label}>Correo electrónico *</Text>
                     <TextInput
                       style={styles.input}
                       placeholder="tu@email.com"
                       value={registerEmail}
                       onChangeText={setRegisterEmail}
                       editable={!isLoading}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
                     />
                   </View>
                   <View style={styles.field}>
-                    <Text style={styles.label}>Contraseña</Text>
+                    <Text style={styles.label}>Contraseña *</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="••••••••"
+                      placeholder="Mínimo 6 caracteres"
                       value={registerPassword}
                       onChangeText={setRegisterPassword}
                       secureTextEntry={true}
                       editable={!isLoading}
+                      autoCapitalize="none"
                     />
                   </View>
                   <View style={styles.field}>
-                    <Text style={styles.label}>Teléfono</Text>
+                    <Text style={styles.label}>Confirmar Contraseña *</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="+56 9 1234 5678"
-                      value={registerPhone}
-                      onChangeText={setRegisterPhone}
+                      placeholder="Repite tu contraseña"
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry={true}
                       editable={!isLoading}
-                      inputMode='phone-pad'
+                      autoCapitalize="none"
                     />
+                  </View>
+                  <View style={styles.requisitos}>
+                    <Text style={styles.requisitosTitle}>Requisitos de contraseña:</Text>
+                    <Text style={styles.requisitoItem}>• Mínimo 6 caracteres</Text>
+                    <Text style={styles.requisitoItem}>• Máximo 50 caracteres</Text>
                   </View>
                   <TouchableOpacity
                     style={[styles.button, isLoading && styles.buttonDisabled]}
@@ -190,7 +261,7 @@ export default function AutenScreen({ navigation }) {
                     disabled={isLoading}
                   >
                     <Text style={styles.buttonText}>
-                      {isLoading ? "Cargando..." : "Crear Cuenta"}
+                      {isLoading ? "Creando cuenta..." : "Crear Cuenta"}
                     </Text>
                   </TouchableOpacity>
                 </View>
