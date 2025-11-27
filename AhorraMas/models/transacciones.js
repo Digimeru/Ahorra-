@@ -1,4 +1,4 @@
-export class Transacciones {
+export class Transaccion {
     constructor(id, tipo, monto, categoria, fecha, descripcion, usuarioId) {
         this.id = id;
         this.tipo = tipo; // 'ingreso' | 'gasto'
@@ -9,7 +9,7 @@ export class Transacciones {
         this.usuarioId = usuarioId;
     }
 
-      static validarTipo(tipo) {
+    static validarTipo(tipo) {
         const tiposValidos = ['ingreso', 'gasto'];
         if (!tiposValidos.includes(tipo)) {
             throw new Error('El tipo debe ser "ingreso" o "gasto"');
@@ -64,5 +64,68 @@ export class Transacciones {
         }
         return true;
     }
+}
 
+export class Categorias {
+    static categoriasIngresos = [
+        'Salario',
+        'Freelance',
+        'Inversiones',
+        'Otros Ingresos'
+    ];
+
+    static categoriasGastos = [
+        'Alimentación',
+        'Transporte',
+        'Vivienda',
+        'Ocio',
+        'Servicios',
+        'Salud',
+        'Educación',
+        'Seguridad',
+        'Otros Gastos'
+    ];
+
+    static obtenerTodas() {
+        return [...this.categoriasIngresos, ...this.categoriasGastos];
+    }
+
+    static validarCategoria(categoria) {
+        const todasCategorias = this.obtenerTodas();
+        if (!todasCategorias.includes(categoria)) {
+            throw new Error(`La categoría "${categoria}" no es válida. Categorías permitidas: ${todasCategorias.join(', ')}`);
+        }
+        return true;
+    }
+
+    static obtenerPorTipo(tipo) {
+        if (tipo === 'ingreso') {
+            return this.categoriasIngresos;
+        } else if (tipo === 'gasto') {
+            return this.categoriasGastos;
+        } else {
+            throw new Error('Tipo debe ser "ingreso" o "gasto"');
+        }
+    }
+
+    // Colores para las categorías (para gráficas)
+    static coloresCategorias = {
+        'Salario': '#10b981',
+        'Freelance': '#059669',
+        'Inversiones': '#0ea5e9',
+        'Otros Ingresos': '#3b82f6',
+        'Alimentación': '#ec4899',
+        'Transporte': '#ef4444',
+        'Vivienda': '#f97316',
+        'Ocio': '#eab308',
+        'Servicios': '#8b5cf6',
+        'Salud': '#06b6d4',
+        'Educación': '#84cc16',
+        'Seguridad': '#6366f1',
+        'Otros Gastos': '#64748b'
+    };
+
+    static obtenerColor(categoria) {
+        return this.coloresCategorias[categoria] || '#6b7280';
+    }
 }

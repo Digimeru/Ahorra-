@@ -4,6 +4,7 @@ import { Usuario } from '../models/usuario';
 export class UsuarioController {
     constructor(){
         this.listeners = [];
+        this.currentUser = null;
     }
 
     async initialize(){
@@ -96,6 +97,15 @@ export class UsuarioController {
             console.error('Error al iniciar sesión:', error);
             throw error;
         }
+    }
+
+    setCurrentUser(user) {
+        this.currentUser = user;
+        this.notifyListeners();
+    }
+
+    getCurrentUser() {
+        return this.currentUser;
     }
 
     async editarPerfil(id, nuevoNombre, nuevoEmail){
