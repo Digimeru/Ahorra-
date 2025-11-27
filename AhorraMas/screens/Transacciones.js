@@ -16,20 +16,15 @@ const EXPENSE_CATEGORIES = ['Alimentación', 'Transporte', 'Ocio', 'Servicios', 
 const ALL_CATEGORIES = [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES];
 
 export default function Transacciones({ navigation }) {
-  // Estados para el formulario
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState('');
   const [description, setDescription] = useState('');
-
-  // Estados para filtros y lista
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-
-  // Estados para edición
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editAmount, setEditAmount] = useState('');
@@ -37,14 +32,13 @@ export default function Transacciones({ navigation }) {
   const [editDate, setEditDate] = useState('');
   const [editDescription, setEditDescription] = useState('');
 
-  // Datos de ejemplo
   const [transactions, setTransactions] = useState([
     {
       id: '1',
       type: 'income',
       amount: 2000000,
       category: 'Salario',
-      date: '2024-01-15',
+      date: '15/01/2024',
       description: 'Pago mensual'
     },
     {
@@ -52,7 +46,7 @@ export default function Transacciones({ navigation }) {
       type: 'expense',
       amount: 150000,
       category: 'Alimentación',
-      date: '2024-01-16',
+      date: '16/01/2024',
       description: 'Supermercado'
     },
     {
@@ -60,7 +54,7 @@ export default function Transacciones({ navigation }) {
       type: 'expense',
       amount: 45000,
       category: 'Transporte',
-      date: '2024-01-17',
+      date: '17/01/2024',
       description: 'Combustible'
     }
   ]);
@@ -75,40 +69,116 @@ export default function Transacciones({ navigation }) {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
+    return dateString;
   };
 
-  // Agregar transacción
+  const validateDate = (dateString) => {
+    const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+    const match = dateString.match(dateRegex);
+    
+    if (!match) {
+      return false;
+    }
+    
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    const year = parseInt(match[3], 10);
+    
+    if (month < 1 || month > 12) {
+      return false;
+    }
+    
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    if (day < 1 || day > daysInMonth) {
+      return false;
+    }
+    
+    if (year < 1900 || year > 2100) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  const formatDateInput = (text) => {
+    let cleaned = text.replace(/[^0-9]/g, '');
+    
+    if (cleaned.length > 8) {
+      cleaned = cleaned.substring(0, 8);
+    }
+    
+    if (cleaned.length <= 2) {
+      return cleaned;
+    } else if (cleaned.length <= 4) {
+      return `${cleaned.substring(0, 2)}/${cleaned.substring(2)}`;
+    } else {
+      return `${cleaned.substring(0, 2)}/${cleaned.substring(2, 4)}/${cleaned.substring(4)}`;
+    }
+  };
+
+  const calculateTotals = () => {
+    const totalIngresos = transactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const totalGastos = transactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const balance = totalIngresos - totalGastos;
+    
+    return { totalIngresos, totalGastos, balance };
+  };
+
+  const { totalIngresos, totalGastos, balance } = calculateTotals();
+
   const handleSubmit = () => {
-    if (!amount || !category) {
+    if (!amount || !category || !date) {
       Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
+      return;
+    }
+
+    const amountNumber = parseFloat(amount);
+    
+    if (isNaN(amountNumber) || amountNumber <= 0) {
+      Alert.alert('Error', 'Por favor ingresa un monto válido mayor a 0');
+      return;
+    }
+
+    if (type === 'income' && amountNumber < 0) {
+      Alert.alert('Error', 'Los ingresos no pueden ser negativos');
+      return;
+    }
+
+    if (!validateDate(date)) {
+      Alert.alert('Error', 'Por favor ingresa una fecha válida en formato DD/MM/AAAA\n\nEjemplo: 15/01/2024');
       return;
     }
 
     const newTransaction = {
       id: Date.now().toString(),
       type,
-      amount: parseFloat(amount),
+      amount: amountNumber,
       category,
       date,
       description,
     };
 
     setTransactions([newTransaction, ...transactions]);
-    Alert.alert('Éxito', `${type === 'income' ? 'Ingreso' : 'Gasto'} registrado exitosamente`);
+    
+    Alert.alert(
+      '✅ Éxito', 
+      `${type === 'income' ? 'Ingreso' : 'Gasto'} de ${formatCurrency(amountNumber)} registrado`,
+      [{ text: 'Aceptar', style: 'default' }]
+    );
 
-    // Reset form
     setAmount('');
     setCategory('');
     setDescription('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate('');
   };
 
-  // Editar transacción
   const handleEdit = (transaction) => {
     setEditingTransaction(transaction);
     setEditAmount(transaction.amount.toString());
@@ -121,11 +191,28 @@ export default function Transacciones({ navigation }) {
   const handleSaveEdit = () => {
     if (!editingTransaction) return;
 
+    const amountNumber = parseFloat(editAmount);
+    
+    if (isNaN(amountNumber) || amountNumber <= 0) {
+      Alert.alert('Error', 'Por favor ingresa un monto válido mayor a 0');
+      return;
+    }
+
+    if (editingTransaction.type === 'income' && amountNumber < 0) {
+      Alert.alert('Error', 'Los ingresos no pueden ser negativos');
+      return;
+    }
+
+    if (!validateDate(editDate)) {
+      Alert.alert('Error', 'Por favor ingresa una fecha válida en formato DD/MM/AAAA\n\nEjemplo: 15/01/2024');
+      return;
+    }
+
     setTransactions(transactions.map(t => 
       t.id === editingTransaction.id 
         ? { 
             ...t, 
-            amount: parseFloat(editAmount),
+            amount: amountNumber,
             category: editCategory,
             date: editDate,
             description: editDescription
@@ -133,15 +220,14 @@ export default function Transacciones({ navigation }) {
         : t
     ));
 
-    Alert.alert('Éxito', 'Transacción actualizada');
+    Alert.alert('✅ Éxito', 'Transacción actualizada correctamente');
     setEditModalVisible(false);
     setEditingTransaction(null);
   };
 
-  // Eliminar transacción
   const handleDelete = (id) => {
     Alert.alert(
-      'Eliminar Transacción',
+      '🗑️ Eliminar Transacción',
       '¿Estás seguro de que deseas eliminar esta transacción?',
       [
         { text: 'Cancelar', style: 'cancel' },
@@ -150,17 +236,38 @@ export default function Transacciones({ navigation }) {
           style: 'destructive',
           onPress: () => {
             setTransactions(transactions.filter(t => t.id !== id));
-            Alert.alert('Éxito', 'Transacción eliminada');
+            Alert.alert('✅ Éxito', 'Transacción eliminada');
           }
         }
       ]
     );
   };
 
-  // Filtrar transacciones
-  let filteredTransactions = [...transactions].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  const handleAmountChange = (text) => {
+    const cleaned = text.replace(/[^0-9.]/g, '');
+    setAmount(cleaned);
+  };
+
+  const handleEditAmountChange = (text) => {
+    const cleaned = text.replace(/[^0-9.]/g, '');
+    setEditAmount(cleaned);
+  };
+
+  const handleDateChange = (text) => {
+    const formatted = formatDateInput(text);
+    setDate(formatted);
+  };
+
+  const handleEditDateChange = (text) => {
+    const formatted = formatDateInput(text);
+    setEditDate(formatted);
+  };
+
+  let filteredTransactions = [...transactions].sort((a, b) => {
+    const dateA = a.date.split('/').reverse().join('-');
+    const dateB = b.date.split('/').reverse().join('-');
+    return new Date(dateB).getTime() - new Date(dateA).getTime();
+  });
 
   if (filterCategory !== 'all') {
     filteredTransactions = filteredTransactions.filter(
@@ -170,19 +277,26 @@ export default function Transacciones({ navigation }) {
 
   if (filterDateFrom) {
     filteredTransactions = filteredTransactions.filter(
-      (t) => new Date(t.date) >= new Date(filterDateFrom)
+      (t) => {
+        const transactionDate = t.date.split('/').reverse().join('-');
+        const filterFrom = filterDateFrom.split('/').reverse().join('-');
+        return new Date(transactionDate) >= new Date(filterFrom);
+      }
     );
   }
 
   if (filterDateTo) {
     filteredTransactions = filteredTransactions.filter(
-      (t) => new Date(t.date) <= new Date(filterDateTo)
+      (t) => {
+        const transactionDate = t.date.split('/').reverse().join('-');
+        const filterTo = filterDateTo.split('/').reverse().join('-');
+        return new Date(transactionDate) <= new Date(filterTo);
+      }
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <SafeAreaView style={styles.headerSafeArea}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Transacciones</Text>
@@ -191,7 +305,30 @@ export default function Transacciones({ navigation }) {
       </SafeAreaView>
 
       <ScrollView style={styles.main} contentContainerStyle={styles.scrollContent}>
-        {/* Formulario de Nueva Transacción */}
+        
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>Resumen Financiero</Text>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Ingresos</Text>
+              <Text style={styles.incomeSummary}>+{formatCurrency(totalIngresos)}</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Gastos</Text>
+              <Text style={styles.expenseSummary}>-{formatCurrency(totalGastos)}</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Balance</Text>
+              <Text style={[
+                styles.balanceSummary,
+                { color: balance >= 0 ? '#16a34a' : '#dc2626' }
+              ]}>
+                {balance >= 0 ? '+' : ''}{formatCurrency(balance)}
+              </Text>
+            </View>
+          </View>
+        </View>
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Nueva Transacción</Text>
@@ -200,7 +337,6 @@ export default function Transacciones({ navigation }) {
 
           <View style={styles.form}>
             <View style={styles.formRow}>
-              {/* Tipo de Transacción */}
               <View style={styles.formField}>
                 <Text style={styles.label}>Tipo de Transacción *</Text>
                 <View style={styles.typeSelector}>
@@ -218,7 +354,7 @@ export default function Transacciones({ navigation }) {
                       styles.typeButtonText,
                       type === 'expense' && styles.typeButtonTextActive
                     ]}>
-                      Gasto
+                      💸 Gasto
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -235,28 +371,26 @@ export default function Transacciones({ navigation }) {
                       styles.typeButtonText,
                       type === 'income' && styles.typeButtonTextActive
                     ]}>
-                      Ingreso
+                      💰 Ingreso
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
-              {/* Monto */}
               <View style={styles.formField}>
                 <Text style={styles.label}>Monto *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="0"
                   value={amount}
-                  onChangeText={setAmount}
-                  keyboardType="numeric"
+                  onChangeText={handleAmountChange}
+                  keyboardType="decimal-pad"
                   placeholderTextColor="#9ca3af"
                 />
               </View>
             </View>
 
             <View style={styles.formRow}>
-              {/* Categoría */}
               <View style={styles.formField}>
                 <Text style={styles.label}>Categoría *</Text>
                 <ScrollView style={styles.categoriesContainer} horizontal>
@@ -282,20 +416,19 @@ export default function Transacciones({ navigation }) {
                 </ScrollView>
               </View>
 
-              {/* Fecha */}
               <View style={styles.formField}>
                 <Text style={styles.label}>Fecha *</Text>
                 <TextInput
                   style={styles.input}
                   value={date}
-                  onChangeText={setDate}
-                  placeholder="YYYY-MM-DD"
+                  onChangeText={handleDateChange}
+                  placeholder="DD/MM/AAAA"
                   placeholderTextColor="#9ca3af"
+                  maxLength={10}
                 />
               </View>
             </View>
 
-            {/* Descripción */}
             <View style={styles.formField}>
               <Text style={styles.label}>Descripción</Text>
               <TextInput
@@ -314,15 +447,12 @@ export default function Transacciones({ navigation }) {
                 style={[styles.button, styles.submitButton]}
                 onPress={handleSubmit}
               >
-                <Text style={styles.submitButtonIcon}>+Agregar</Text>
+                <Text style={styles.submitButtonIcon}>💾 Agregar Transacción</Text>
               </TouchableOpacity>
-
             </View>
-            
           </View>
         </View>
 
-        {/* Filtros */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Filtros</Text>
@@ -387,7 +517,7 @@ export default function Transacciones({ navigation }) {
                     style={styles.input}
                     value={filterDateFrom}
                     onChangeText={setFilterDateFrom}
-                    placeholder="YYYY-MM-DD"
+                    placeholder="DD/MM/AAAA"
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
@@ -397,7 +527,7 @@ export default function Transacciones({ navigation }) {
                     style={styles.input}
                     value={filterDateTo}
                     onChangeText={setFilterDateTo}
-                    placeholder="YYYY-MM-DD"
+                    placeholder="DD/MM/AAAA"
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
@@ -406,11 +536,10 @@ export default function Transacciones({ navigation }) {
           )}
         </View>
 
-        {/* Lista de Transacciones */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              Transacciones ({filteredTransactions.length})
+              📋 Transacciones ({filteredTransactions.length})
             </Text>
           </View>
 
@@ -418,7 +547,6 @@ export default function Transacciones({ navigation }) {
             <View style={styles.transactionsList}>
               {filteredTransactions.map((transaction) => (
                 <View key={transaction.id} style={styles.transactionItem}>
-                  {/* Icono */}
                   <View style={[
                     styles.transactionIcon,
                     transaction.type === 'income' ? styles.incomeIcon : styles.expenseIcon
@@ -428,7 +556,6 @@ export default function Transacciones({ navigation }) {
                     </Text>
                   </View>
 
-                  {/* Información */}
                   <View style={styles.transactionInfo}>
                     <Text style={styles.transactionCategory}>
                       {transaction.category}
@@ -441,7 +568,6 @@ export default function Transacciones({ navigation }) {
                     </Text>
                   </View>
 
-                  {/* Monto */}
                   <View style={styles.transactionAmount}>
                     <Text style={[
                       styles.amountText,
@@ -452,7 +578,6 @@ export default function Transacciones({ navigation }) {
                     </Text>
                   </View>
 
-                  {/* Acciones */}
                   <View style={styles.transactionActions}>
                     <TouchableOpacity 
                       style={styles.actionButton}
@@ -485,7 +610,6 @@ export default function Transacciones({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* Modal de Edición */}
       <Modal
         visible={editModalVisible}
         animationType="fade"
@@ -495,7 +619,7 @@ export default function Transacciones({ navigation }) {
         <ScrollView>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Editar Transacción</Text>
+            <Text style={styles.modalTitle}>✏️ Editar Transacción</Text>
 
             {editingTransaction && (
               <View style={styles.form}>
@@ -504,8 +628,8 @@ export default function Transacciones({ navigation }) {
                   <TextInput
                     style={styles.input}
                     value={editAmount}
-                    onChangeText={setEditAmount}
-                    keyboardType="numeric"
+                    onChangeText={handleEditAmountChange}
+                    keyboardType="decimal-pad"
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
@@ -541,9 +665,10 @@ export default function Transacciones({ navigation }) {
                   <TextInput
                     style={styles.input}
                     value={editDate}
-                    onChangeText={setEditDate}
-                    placeholder="YYYY-MM-DD"
+                    onChangeText={handleEditDateChange}
+                    placeholder="DD/MM/AAAA"
                     placeholderTextColor="#9ca3af"
+                    maxLength={10}
                   />
                 </View>
 
@@ -564,13 +689,13 @@ export default function Transacciones({ navigation }) {
                     style={[styles.button, styles.cancelButton]}
                     onPress={() => setEditModalVisible(false)}
                   >
-                    <Text style={styles.cancelButtonText}>Cancelar</Text>
+                    <Text style={styles.cancelButtonText}>❌ Cancelar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={[styles.button, styles.submitButton]}
                     onPress={handleSaveEdit}
                   >
-                    <Text style={styles.submitButtonText}>Guardar Cambios</Text>
+                    <Text style={styles.submitButtonText}>💾 Guardar</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -615,6 +740,51 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 20,
   },
+  summaryCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  summaryItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  incomeSummary: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#16a34a',
+  },
+  expenseSummary: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#dc2626',
+  },
+  balanceSummary: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   section: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
@@ -658,7 +828,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#374151',
   },
-  // Selector de Tipo
   typeSelector: {
     flexDirection: 'row',
     backgroundColor: '#f3f4f6',
@@ -688,7 +857,6 @@ const styles = StyleSheet.create({
   typeButtonTextActive: {
     color: '#111827',
   },
-  // Inputs
   input: {
     borderWidth: 1,
     borderColor: '#d1d5db',
@@ -701,7 +869,6 @@ const styles = StyleSheet.create({
     minHeight: 90,
     textAlignVertical: 'top',
   },
-  // Categorías
   categoriesContainer: {
     maxHeight: 50,
   },
@@ -729,18 +896,17 @@ const styles = StyleSheet.create({
   categoryChipTextSelected: {
     color: '#ffffff',
   },
-  // Botón de enviar
   submitButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: '#16a34a',
-  paddingVertical: 16,
-  borderRadius: 8,
-  marginTop: 8,
-  borderWidth: 2,          
-  borderColor: '#ffffff',  
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#16a34a',
+    paddingVertical: 16,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
   submitButtonIcon: {
     color: '#ffffff',
     textAlign: 'center',
@@ -754,7 +920,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
-  // Filtros
   filterToggle: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -806,7 +971,6 @@ const styles = StyleSheet.create({
   filterChipTextSelected: {
     color: '#ffffff',
   },
-  // Lista de Transacciones
   transactionsList: {
     gap: 12,
   },
@@ -880,7 +1044,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#dc2626',
   },
-  // Estado vacío
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -902,14 +1065,12 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     textAlign: 'center',
   },
-  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-
   },
   modalContent: {
     backgroundColor: '#ffffff',
@@ -946,13 +1107,5 @@ const styles = StyleSheet.create({
     color: '#374151',
     fontSize: 14,
     fontWeight: '500',
-  },
-  submitButton: {
-    backgroundColor: '#16a34a',
-  },
-  submitButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
   },
 });
