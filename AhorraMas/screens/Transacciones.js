@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -10,6 +10,9 @@ import {
   Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import TransaccionController from '../controllers/transaccionController';
+import UsuarioController from '../controllers/usuarioController';
 
 const INCOME_CATEGORIES = ['Salario', 'Freelance', 'Inversiones', 'Otros Ingresos'];
 const EXPENSE_CATEGORIES = ['Alimentación', 'Transporte', 'Ocio', 'Servicios', 'Salud', 'Educación', 'Otros Gastos'];
@@ -32,32 +35,36 @@ export default function Transacciones({ navigation }) {
   const [editDate, setEditDate] = useState('');
   const [editDescription, setEditDescription] = useState('');
 
-  const [transactions, setTransactions] = useState([
-    {
-      id: '1',
-      type: 'income',
-      amount: 2000000,
-      category: 'Salario',
-      date: '15/01/2024',
-      description: 'Pago mensual'
-    },
-    {
-      id: '2',
-      type: 'expense',
-      amount: 150000,
-      category: 'Alimentación',
-      date: '16/01/2024',
-      description: 'Supermercado'
-    },
-    {
-      id: '3',
-      type: 'expense',
-      amount: 45000,
-      category: 'Transporte',
-      date: '17/01/2024',
-      description: 'Combustible'
+  const [transactions, setTransactions] = useState([]);
+  const currentUser = UsuarioController.getCurrentUser();
+  // Carga los datos de la BD y los traduce para la vista
+  const cargarDatos = async () => {
+    if (currentUser) {
+      try {
+        const datos = await TransaccionController.obtenerTransacciones(currentUser.id);
+        
+        // Traduce campo por campo
+        const datosTraducidos = datos.map(t => ({
+          id: t.id.toString(),
+          type: t.tipo,                
+          amount: t.monto,              
+          category: t.categoria,        
+          description: t.descripcion,   
+          
+          date: t.fecha.split('-').reverse().join('/') 
+        }));
+
+        setTransactions(datosTraducidos);
+      } catch (error) {
+        console.error("Error cargando transacciones:", error);
+      }
     }
-  ]);
+  };
+  useFocusEffect(
+    useCallback(() => {
+      cargarDatos();
+    }, [currentUser])
+  );
 
   const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
@@ -133,7 +140,13 @@ export default function Transacciones({ navigation }) {
 
   const { totalIngresos, totalGastos, balance } = calculateTotals();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+
+    if (!currentUser) {
+      Alert.alert("Error", "Se perdió la sesión. Sal y vuelve a entrar.");
+      return;
+    }
+
     if (!amount || !category || !date) {
       Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
       return;
@@ -155,28 +168,41 @@ export default function Transacciones({ navigation }) {
       Alert.alert('Error', 'Por favor ingresa una fecha válida en formato DD/MM/AAAA\n\nEjemplo: 15/01/2024');
       return;
     }
+    try {
 
-    const newTransaction = {
-      id: Date.now().toString(),
-      type,
-      amount: amountNumber,
-      category,
-      date,
-      description,
-    };
+      const [day, month, year] = date.split('/');
+      const isoDate = `${year}-${month}-${day}`;
 
-    setTransactions([newTransaction, ...transactions]);
-    
-    Alert.alert(
-      '✅ Éxito', 
-      `${type === 'income' ? 'Ingreso' : 'Gasto'} de ${formatCurrency(amountNumber)} registrado`,
-      [{ text: 'Aceptar', style: 'default' }]
-    );
+      const tipoEnEspanol = type === 'income' ? 'ingreso' : 'gasto';
 
-    setAmount('');
-    setCategory('');
-    setDescription('');
-    setDate('');
+      await TransaccionController.agregarTransaccion(
+        tipoEnEspanol,
+        amountNumber, 
+        category,
+        description,
+        isoDate, 
+        currentUser.id
+      );
+      
+      Alert.alert(
+        '✅ Éxito', 
+        `${type === 'income' ? 'Ingreso' : 'Gasto'} registrado correctamente`,
+        [{ text: 'Aceptar' }]
+      );
+
+      // Recarga la lista
+      cargarDatos(); 
+      
+      // Limpia los campos
+      setAmount('');
+      setCategory('');
+      setDescription('');
+      setDate('');
+      
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'No se pudo guardar: ' + error.message);
+    }
   };
 
   const handleEdit = (transaction) => {
@@ -234,9 +260,18 @@ export default function Transacciones({ navigation }) {
         { 
           text: 'Eliminar', 
           style: 'destructive',
-          onPress: () => {
-            setTransactions(transactions.filter(t => t.id !== id));
-            Alert.alert('✅ Éxito', 'Transacción eliminada');
+          onPress: async () => {
+            try {
+
+              await TransaccionController.eliminarTransaccion(id, currentUser.id);
+
+              await cargarDatos(); 
+              
+              Alert.alert('✅ Éxito', 'Transacción eliminada correctamente');
+            } catch (error) {
+              console.error(error);
+              Alert.alert('Error', 'No se pudo eliminar: ' + error.message);
+            }
           }
         }
       ]

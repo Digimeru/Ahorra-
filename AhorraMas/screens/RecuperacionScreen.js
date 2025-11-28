@@ -17,7 +17,7 @@ export default function RecoveryScreen({ navigation }) {
       setIsLoading(false);
       Alert.alert(
         'Correo Enviado',
-        `Se han enviado un codigo de recuperación a tu correo: ${email} \n`,
+        `Se han enviado un codigo de recuperación a tu correo: ${email}\n\n`,
         [
           { 
             text: 'Entendido', 

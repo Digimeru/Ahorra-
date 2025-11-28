@@ -10,14 +10,34 @@ import {
   Alert 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import  UsuarioController  from '../controllers/usuarioController';
+import { useCallback } from 'react'; 
+import { useFocusEffect } from '@react-navigation/native'; 
 
 export default function Perfil({ navigation }) {
   // Datos del usuario
+  const currentUser = UsuarioController.getCurrentUser();
   const [user, setUser] = useState({
-    name: 'Juan Pérez',
-    email: 'juan.perez@email.com',
+    name: '',
+    email: '',
     phone: '+56 9 1234 5678'
   });
+  useFocusEffect(
+    useCallback(() => {
+      if (currentUser) {
+        setUser({
+          name: currentUser.nombre,
+          email: currentUser.email,
+          phone: 'No registrado' 
+        });
+      
+        setEditName(currentUser.nombre);
+      } else {
+     
+        navigation.reset({ index: 0, routes: [{ name: 'AutenScreen' }] });
+      }
+    }, [])
+  );
 
   // Estados para los modales
   const [editProfileModal, setEditProfileModal] = useState(false);
@@ -43,14 +63,30 @@ export default function Perfil({ navigation }) {
   });
 
   // Funciones para manejar cambios
-  const handleSaveProfile = () => {
-    setUser({
-      ...user,
-      name: editName,
-      phone: editPhone
-    });
-    setEditProfileModal(false);
-    Alert.alert('Éxito', 'Perfil actualizado correctamente');
+  const handleSaveProfile = async () => {
+    try {
+      if (!currentUser) return;
+
+      const usuarioActualizado = await UsuarioController.editarPerfil(
+        currentUser.id, 
+        editName, 
+        currentUser.email 
+      );
+
+      UsuarioController.setCurrentUser(usuarioActualizado);
+
+      setUser({
+        ...user,
+        name: usuarioActualizado.nombre,
+        phone: editPhone 
+      });
+
+      setEditProfileModal(false);
+      Alert.alert('Éxito', 'Perfil actualizado correctamente');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'No se pudo actualizar: ' + error.message);
+    }
   };
 
   const handleChangePassword = () => {

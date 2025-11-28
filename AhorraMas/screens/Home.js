@@ -1,38 +1,83 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import TransaccionController from '../controllers/transaccionController';
+import UsuarioController from '../controllers/usuarioController';
+import { Categorias } from '../models/transacciones';
 
 export default function Home({ navigation }) {
-  // Datos para las gráficas
-  const incomeData = [
-    { category: 'Freelance', amount: 740000, percentage: 74, color: '#10b981' },
-    { category: 'Inversiones', amount: 260000, percentage: 26, color: '#059669' }
-  ];
 
-  const expensesData = [
-    { category: 'Transporte', amount: 140000, percentage: 14, color: '#ef4444' },
-    { category: 'Ocio', amount: 160000, percentage: 16, color: '#f97316' },
-    { category: 'Servicios', amount: 150000, percentage: 15, color: '#eab308' },
-    { category: 'Salud', amount: 120000, percentage: 12, color: '#8b5cf6' },
-    { category: 'Alimentación', amount: 190000, percentage: 19, color: '#ec4899' },
-    { category: 'Educación', amount: 210000, percentage: 21, color: '#06b6d4' },
-    { category: 'Seguridad', amount: 240000, percentage: 24, color: '#3b82f6' }
-  ];
+  const [resumen, setResumen] = useState(null);
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const currentUser = UsuarioController.getCurrentUser();
+
+  if (!currentUser) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>Sesión no iniciada</Text>
+        <TouchableOpacity 
+          onPress={() => navigation.reset({
+            index: 0,
+            routes: [{ name: 'AutenScreen' }],
+          })}
+          style={styles.loginButton}
+        >
+            <Text style={styles.loginButtonText}>Ir al Login</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Carga de datos reales desde la Base de Datos
+  useFocusEffect(
+    useCallback(() => {
+      const fetchData = async () => {
+        if (currentUser) {
+          try {
+            // Cargar Resumen
+            const dataResumen = await TransaccionController.obtenerResumenMensual(currentUser.id);
+            setResumen(dataResumen);
+
+            const dataTransacciones = await TransaccionController.obtenerTransacciones(currentUser.id, 5);
+            
+            const transaccionesFormateadas = dataTransacciones.map(t => ({
+              id: t.id.toString(),
+              name: t.descripcion || t.categoria,
+              amount: t.monto,
+              type: t.tipo === 'ingreso' ? 'income' : 'expense',
+              category: t.categoria
+            }));
+            setRecentTransactions(transaccionesFormateadas);
+
+          } catch (error) {
+            console.error("Error cargando Home:", error);
+          }
+        }
+      };
+      fetchData();
+    }, [currentUser])
+  );
+
+  const incomeData = resumen ? resumen.ingresosPorCategoria.map(item => ({
+    category: item.categoria,
+    amount: item.monto,
+    percentage: item.porcentaje,
+    color: Categorias.obtenerColor(item.categoria)
+  })) : [];
+
+  const expensesData = resumen ? resumen.gastosPorCategoria.map(item => ({
+    category: item.categoria,
+    amount: item.monto,
+    percentage: item.porcentaje,
+    color: Categorias.obtenerColor(item.categoria)
+  })) : [];
 
   const comparisonData = {
-    income: 1000000,
-    expenses: 750000
+    income: resumen ? resumen.ingresos : 0,
+    expenses: resumen ? resumen.gastos : 0
   };
 
-  const recentTransactions = [
-    { id: 1, name: 'Supermercado', amount: -150000, type: 'expense', category: 'Alimentación' },
-    { id: 2, name: 'Salario Freelance', amount: 740000, type: 'income', category: 'Freelance' },
-    { id: 3, name: 'Restaurante', amount: -75000, type: 'expense', category: 'Ocio' },
-    { id: 4, name: 'Dividendos', amount: 260000, type: 'income', category: 'Inversiones' },
-    { id: 5, name: 'Transporte', amount: -45000, type: 'expense', category: 'Transporte' },
-  ];
-
-  // Componente para la progress bar
   const ProgressBar = ({ percentage, color, showLabel = true }) => (
     <View style={styles.progressContainer}>
       {showLabel && (
@@ -52,9 +97,8 @@ export default function Home({ navigation }) {
     </View>
   );
 
-  // Componente para la gráfica de comparación
   const ComparisonChart = () => {
-    const maxValue = Math.max(comparisonData.income, comparisonData.expenses);
+    const maxValue = Math.max(comparisonData.income, comparisonData.expenses) || 1; // Evitar división por 0
     const incomeHeight = (comparisonData.income / maxValue) * 120;
     const expensesHeight = (comparisonData.expenses / maxValue) * 120;
 
@@ -66,7 +110,7 @@ export default function Home({ navigation }) {
               style={[
                 styles.bar,
                 styles.incomeBar,
-                { height: incomeHeight }
+                { height: incomeHeight || 2 } // Altura mínima visual
               ]} 
             />
             <Text style={styles.barLabel}>Ingresos</Text>
@@ -77,7 +121,7 @@ export default function Home({ navigation }) {
               style={[
                 styles.bar,
                 styles.expenseBar,
-                { height: expensesHeight }
+                { height: expensesHeight || 2 } // Altura mínima visual
               ]} 
             />
             <Text style={styles.barLabel}>Gastos</Text>
@@ -90,7 +134,6 @@ export default function Home({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <SafeAreaView style={styles.headerSafeArea}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Ahorra+ App</Text>
@@ -121,71 +164,54 @@ export default function Home({ navigation }) {
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>
-              {Math.round((comparisonData.income / comparisonData.expenses) * 100)}%
+              {comparisonData.expenses > 0 
+                ? Math.round((comparisonData.income / comparisonData.expenses) * 100) 
+                : 100}%
             </Text>
             <Text style={styles.statLabel}>Ratio</Text>
           </View>
         </View>
 
-        {/* Comparación Ingresos vs Gastos */}
+        {/* Comparación */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Comparación Ingresos vs Gastos</Text>
           <View style={{ marginTop: 10 }}>
             <ComparisonChart />
           </View>
-          
         </View>
 
         {/* Ingresos por Categoría */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ingresos por Categoría</Text>
-          {incomeData.map((item, index) => (
+          {incomeData.length > 0 ? incomeData.map((item, index) => (
             <View key={index} style={styles.categoryItem}>
               <View style={styles.categoryHeader}>
                 <View style={styles.categoryInfo}>
-                  <View 
-                    style={[
-                      styles.categoryColor,
-                      { backgroundColor: item.color }
-                    ]} 
-                  />
+                  <View style={[styles.categoryColor, { backgroundColor: item.color }]} />
                   <Text style={styles.categoryName}>{item.category}</Text>
                 </View>
                 <Text style={styles.categoryAmount}>${(item.amount / 1000).toFixed(0)}k</Text>
               </View>
-              <ProgressBar 
-                percentage={item.percentage} 
-                color={item.color}
-                showLabel={false}
-              />
+              <ProgressBar percentage={item.percentage} color={item.color} showLabel={false} />
             </View>
-          ))}
+          )) : <Text style={styles.emptyText}>No hay ingresos registrados</Text>}
         </View>
 
         {/* Gastos por Categoría */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Gastos por Categoría</Text>
-          {expensesData.map((item, index) => (
+          {expensesData.length > 0 ? expensesData.map((item, index) => (
             <View key={index} style={styles.categoryItem}>
               <View style={styles.categoryHeader}>
                 <View style={styles.categoryInfo}>
-                  <View 
-                    style={[
-                      styles.categoryColor,
-                      { backgroundColor: item.color }
-                    ]} 
-                  />
+                  <View style={[styles.categoryColor, { backgroundColor: item.color }]} />
                   <Text style={styles.categoryName}>{item.category}</Text>
                 </View>
                 <Text style={styles.categoryAmount}>-${(item.amount / 1000).toFixed(0)}k</Text>
               </View>
-              <ProgressBar 
-                percentage={item.percentage} 
-                color={item.color}
-                showLabel={false}
-              />
+              <ProgressBar percentage={item.percentage} color={item.color} showLabel={false} />
             </View>
-          ))}
+          )) : <Text style={styles.emptyText}>No hay gastos registrados</Text>}
         </View>
 
         {/* Transacciones recientes */}
@@ -199,7 +225,7 @@ export default function Home({ navigation }) {
               <Text style={styles.seeAllText}>Ver todas</Text>
             </TouchableOpacity>
           </View>
-          {recentTransactions.slice(0, 5).map((transaction) => (
+          {recentTransactions.map((transaction) => (
             <View key={transaction.id} style={styles.transactionItem}>
               <View style={styles.transactionInfo}>
                 <View>
@@ -222,9 +248,38 @@ export default function Home({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#374151',
+    marginBottom: 20,
+  },
+  loginButton: {
+    backgroundColor: '#16a34a',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  loginButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  emptyText: {
+    color: '#9ca3af',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 10,
   },
   headerSafeArea: {
     backgroundColor: '#16a34a',
@@ -343,7 +398,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  // Estilos para gráficas
   comparisonChart: {
     alignItems: 'center',
     marginTop: 10,
@@ -380,7 +434,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
   },
-  // Estilos para categorías
   categoryItem: {
     marginBottom: 16,
   },
@@ -431,7 +484,6 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 4,
   },
-  // Estilos para transacciones
   transactionItem: {
     paddingVertical: 12,
     borderBottomWidth: 1,
@@ -461,38 +513,5 @@ const styles = StyleSheet.create({
   },
   expenseAmount: {
     color: '#dc2626',
-  },
-  // Navegación inferior
-  navSafeArea: {
-    backgroundColor: '#ffffff',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  navButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navIcon: {
-    fontSize: 20,
-    marginBottom: 4,
-    color: '#94a3b8',
-  },
-  navIconActive: {
-    color: '#16a34a',
-  },
-  navText: {
-    fontSize: 12,
-    color: '#94a3b8',
-  },
-  navTextActive: {
-    color: '#16a34a',
-    fontWeight: '600',
   },
 });

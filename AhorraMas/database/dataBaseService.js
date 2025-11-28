@@ -117,7 +117,7 @@ class DatabaseService {
             return usuarios.find(u => u.email === email) || null;
         } else {
             await this.ensureDb();
-            const result = await this.db.getFirstAsync('SELECT * FROM usuarios WHERE email = ?', email);
+            const result = await this.db.getFirstAsync('SELECT * FROM usuarios WHERE email = ?', [email]);
             return result || null;
         }
     }

@@ -39,6 +39,9 @@ export default function AutenScreen({ navigation }) {
       const usuario = await UsuarioController.iniciarSesion(loginEmail, loginPassword);
       
       if (usuario) {
+
+        UsuarioController.setCurrentUser(usuario);
+
         Alert.alert('Éxito', `¡Bienvenido ${usuario.nombre}!`);
         navigation.navigate("Main");
       }
