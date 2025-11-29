@@ -23,12 +23,12 @@ function BottomTabs() {
 
         if (route.name === 'Home') {
           inconName = 'home';
-          } else if (route.name === 'Perfil'){
-            inconName = 'person';
           } else if (route.name === 'Presupuestos'){
             inconName = 'wallet';
           } else if (route.name === 'Transacciones'){
             inconName = 'receipt';
+          } else if (route.name === 'Perfil'){
+            inconName = 'person';
           }
           return <Ionicons name={inconName} size={size} color={color} />
           }
@@ -40,9 +40,9 @@ function BottomTabs() {
         options={{ title: 'Inicio' }}
       />
       <Tab.Screen 
-        name="Perfil" 
-        component={Perfil} 
-        options={{ title: 'Perfil' }}
+        name="Transacciones" 
+        component={Transacciones} 
+        options={{ title: 'Transacciones' }}
       />
       <Tab.Screen 
         name="Presupuestos" 
@@ -50,9 +50,9 @@ function BottomTabs() {
         options={{ title: 'Presupuestos' }}
       />
       <Tab.Screen 
-        name="Transacciones" 
-        component={Transacciones} 
-        options={{ title: 'Transacciones' }}
+        name="Perfil" 
+        component={Perfil} 
+        options={{ title: 'Perfil' }}
       />
     </Tab.Navigator>
   );
