@@ -1,6 +1,6 @@
 import { Text, View, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
-import UsuarioController from '../controllers/usuarioController'; // Ajusta la ruta según tu estructura
+import UsuarioController from '../controllers/usuarioController'; 
 
 
 export default function AutenScreen({ navigation }) {

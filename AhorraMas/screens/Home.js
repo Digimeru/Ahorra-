@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -29,35 +29,46 @@ export default function Home({ navigation }) {
     );
   }
 
-  // Carga de datos reales desde la Base de Datos
+  // Función para cargar todos los datos
+  const fetchData = async () => {
+    if (currentUser) {
+      try {
+        // Cargar Resumen
+        const dataResumen = await TransaccionController.obtenerResumenMensual(currentUser.id);
+        setResumen(dataResumen);
+
+        const dataTransacciones = await TransaccionController.obtenerTransacciones(currentUser.id, 5);
+        
+        const transaccionesFormateadas = dataTransacciones.map(t => ({
+          id: t.id.toString(),
+          name: t.descripcion || t.categoria,
+          amount: t.monto,
+          type: t.tipo === 'ingreso' ? 'income' : 'expense',
+          category: t.categoria
+        }));
+        setRecentTransactions(transaccionesFormateadas);
+
+      } catch (error) {
+        console.error("Error cargando Home:", error);
+      }
+    }
+  };
+
+  // Cargar datos cuando el screen obtiene foco
   useFocusEffect(
     useCallback(() => {
-      const fetchData = async () => {
-        if (currentUser) {
-          try {
-            // Cargar Resumen
-            const dataResumen = await TransaccionController.obtenerResumenMensual(currentUser.id);
-            setResumen(dataResumen);
-
-            const dataTransacciones = await TransaccionController.obtenerTransacciones(currentUser.id, 5);
-            
-            const transaccionesFormateadas = dataTransacciones.map(t => ({
-              id: t.id.toString(),
-              name: t.descripcion || t.categoria,
-              amount: t.monto,
-              type: t.tipo === 'ingreso' ? 'income' : 'expense',
-              category: t.categoria
-            }));
-            setRecentTransactions(transaccionesFormateadas);
-
-          } catch (error) {
-            console.error("Error cargando Home:", error);
-          }
-        }
-      };
       fetchData();
     }, [currentUser])
   );
+
+  // Suscribirse a cambios en transacciones
+  useEffect(() => {
+    TransaccionController.addListener(fetchData);
+
+    return () => {
+      TransaccionController.removeListener(fetchData);
+    };
+  }, [currentUser]);
 
   const incomeData = resumen ? resumen.ingresosPorCategoria.map(item => ({
     category: item.categoria,

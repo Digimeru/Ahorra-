@@ -165,17 +165,6 @@ export default function Perfil({ navigation }) {
               <Text style={styles.helperText}>El correo no se puede modificar</Text>
             </View>
 
-            <View style={styles.formField}>
-              <Text style={styles.label}>Teléfono</Text>
-              <TextInput
-                style={styles.input}
-                value={editPhone}
-                onChangeText={setEditPhone}
-                placeholder="+56 9 1234 5678"
-                keyboardType="phone-pad"
-              />
-            </View>
-
             <View style={styles.modalActions}>
               <TouchableOpacity 
                 style={[styles.button, styles.cancelButton]}
@@ -507,11 +496,6 @@ export default function Perfil({ navigation }) {
             <View style={styles.infoField}>
               <Text style={styles.infoLabel}>Correo electrónico</Text>
               <Text style={styles.infoValue}>{user.email}</Text>
-            </View>
-            
-            <View style={styles.infoField}>
-              <Text style={styles.infoLabel}>Teléfono</Text>
-              <Text style={styles.infoValue}>{user.phone}</Text>
             </View>
           </View>
         </View>
