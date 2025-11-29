@@ -341,28 +341,6 @@ export default function Transacciones({ navigation }) {
 
       <ScrollView style={styles.main} contentContainerStyle={styles.scrollContent}>
         
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Resumen Financiero</Text>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Ingresos</Text>
-              <Text style={styles.incomeSummary}>+{formatCurrency(totalIngresos)}</Text>
-            </View>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Gastos</Text>
-              <Text style={styles.expenseSummary}>-{formatCurrency(totalGastos)}</Text>
-            </View>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Balance</Text>
-              <Text style={[
-                styles.balanceSummary,
-                { color: balance >= 0 ? '#16a34a' : '#dc2626' }
-              ]}>
-                {balance >= 0 ? '+' : ''}{formatCurrency(balance)}
-              </Text>
-            </View>
-          </View>
-        </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
