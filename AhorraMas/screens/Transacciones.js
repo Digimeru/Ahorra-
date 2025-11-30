@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { 
   View, 
   Text, 
@@ -37,7 +38,7 @@ export default function Transacciones({ navigation }) {
 
   const [transactions, setTransactions] = useState([]);
   const currentUser = UsuarioController.getCurrentUser();
-  // Carga los datos de la BD y los traduce para la vista
+    // Carga los datos de la BD y los traduce para la vista
   const cargarDatos = async () => {
     if (currentUser) {
       try {
@@ -59,6 +60,12 @@ export default function Transacciones({ navigation }) {
       }
     }
   };
+  useFocusEffect(
+    useCallback(() => {
+      cargarDatos();
+    }, [currentUser])
+  );
+
   const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
   const formatCurrency = (value) => {
@@ -554,13 +561,16 @@ export default function Transacciones({ navigation }) {
               {filteredTransactions.map((transaction) => (
                 <View key={transaction.id} style={styles.transactionItem}>
                   <View style={[
-                    styles.transactionIcon,
-                    transaction.type === 'income' ? styles.incomeIcon : styles.expenseIcon
-                  ]}>
-                    <Text style={styles.transactionIconText}>
-                      {transaction.type === 'income' ? '📈' : '📉'}
-                    </Text>
-                  </View>
+  styles.transactionIcon,
+  transaction.type === 'income' ? styles.incomeIcon : styles.expenseIcon
+]}>
+  <Ionicons
+    name={transaction.type === 'income' ? 'arrow-up-circle' : 'arrow-down-circle'}
+    size={22}
+    color={transaction.type === 'income' ? '#16a34a' : '#dc2626'}
+  />
+</View>
+
 
                   <View style={styles.transactionInfo}>
                     <Text style={styles.transactionCategory}>
@@ -585,133 +595,150 @@ export default function Transacciones({ navigation }) {
                   </View>
 
                   <View style={styles.transactionActions}>
-                    <TouchableOpacity 
-                      style={styles.actionButton}
-                      onPress={() => handleEdit(transaction)}
-                    >
-                      <Text style={styles.editIcon}>✏️</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.actionButton}
-                      onPress={() => handleDelete(transaction.id)}
-                    >
-                      <Text style={styles.deleteIcon}>🗑️</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>💸</Text>
-              <Text style={styles.emptyTitle}>No hay transacciones</Text>
-              <Text style={styles.emptyDescription}>
-                {filterCategory !== 'all' || filterDateFrom || filterDateTo 
-                  ? 'No hay transacciones que coincidan con los filtros'
-                  : 'Agrega tu primera transacción'
-                }
-              </Text>
-            </View>
-          )}
+  <TouchableOpacity 
+    style={styles.actionButton}
+    onPress={() => handleEdit(transaction)}
+  >
+    <Ionicons name="create-outline" size={20} color="#374151" />
+  </TouchableOpacity>
+
+  <TouchableOpacity 
+    style={styles.actionButton}
+    onPress={() => handleDelete(transaction.id)}
+  >
+    <Ionicons name="trash-outline" size={20} color="#dc2626" />
+  </TouchableOpacity>
+</View>
+
+ </View>
+))}
+
+</View>
+) : (
+  <View style={styles.emptyState}>
+    <Ionicons name="cash-outline" size={48} color="#9ca3af" />
+    <Text style={styles.emptyTitle}>No hay transacciones</Text>
+    <Text style={styles.emptyDescription}>
+      {filterCategory !== 'all' || filterDateFrom || filterDateTo 
+        ? 'No hay transacciones que coincidan con los filtros'
+        : 'Agrega tu primera transacción'
+      }
+    </Text>
+  </View>
+)}
+
+</View>
+</ScrollView>
+
+<Modal
+  visible={editModalVisible}
+  animationType="fade"
+  transparent={true}
+  onRequestClose={() => setEditModalVisible(false)}
+>
+  <ScrollView>
+    <View style={styles.modalOverlay}>
+      <View style={styles.modalContent}>
+        
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Ionicons name="create-outline" size={24} color="#374151" />
+          <Text style={styles.modalTitle}>Editar Transacción</Text>
         </View>
-      </ScrollView>
 
-      <Modal
-        visible={editModalVisible}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setEditModalVisible(false)}
-      >
-        <ScrollView>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>✏️ Editar Transacción</Text>
+        {editingTransaction && (
+          <View style={styles.form}>
 
-            {editingTransaction && (
-              <View style={styles.form}>
-                <View style={styles.formField}>
-                  <Text style={styles.label}>Monto *</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={editAmount}
-                    onChangeText={handleEditAmountChange}
-                    keyboardType="decimal-pad"
-                    placeholderTextColor="#9ca3af"
-                  />
+            <View style={styles.formField}>
+              <Text style={styles.label}>Monto *</Text>
+              <TextInput
+                style={styles.input}
+                value={editAmount}
+                onChangeText={handleEditAmountChange}
+                keyboardType="decimal-pad"
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Categoría *</Text>
+              <ScrollView style={styles.categoriesContainer} horizontal>
+                <View style={styles.categoriesRow}>
+                  {(editingTransaction.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map((cat) => (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[
+                        styles.categoryChip,
+                        editCategory === cat && styles.categoryChipSelected
+                      ]}
+                      onPress={() => setEditCategory(cat)}
+                    >
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          editCategory === cat && styles.categoryChipTextSelected
+                        ]}
+                      >
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
+              </ScrollView>
+            </View>
 
-                <View style={styles.formField}>
-                  <Text style={styles.label}>Categoría *</Text>
-                  <ScrollView style={styles.categoriesContainer} horizontal>
-                    <View style={styles.categoriesRow}>
-                      {(editingTransaction.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES)
-                        .map((cat) => (
-                          <TouchableOpacity
-                            key={cat}
-                            style={[
-                              styles.categoryChip,
-                              editCategory === cat && styles.categoryChipSelected
-                            ]}
-                            onPress={() => setEditCategory(cat)}
-                          >
-                            <Text style={[
-                              styles.categoryChipText,
-                              editCategory === cat && styles.categoryChipTextSelected
-                            ]}>
-                              {cat}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                    </View>
-                  </ScrollView>
-                </View>
+            <View style={styles.formField}>
+              <Text style={styles.label}>Fecha *</Text>
+              <TextInput
+                style={styles.input}
+                value={editDate}
+                onChangeText={handleEditDateChange}
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor="#9ca3af"
+                maxLength={10}
+              />
+            </View>
 
-                <View style={styles.formField}>
-                  <Text style={styles.label}>Fecha *</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={editDate}
-                    onChangeText={handleEditDateChange}
-                    placeholder="DD/MM/AAAA"
-                    placeholderTextColor="#9ca3af"
-                    maxLength={10}
-                  />
-                </View>
+            <View style={styles.formField}>
+              <Text style={styles.label}>Descripción</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={editDescription}
+                onChangeText={setEditDescription}
+                multiline
+                numberOfLines={3}
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
 
-                <View style={styles.formField}>
-                  <Text style={styles.label}>Descripción</Text>
-                  <TextInput
-                    style={[styles.input, styles.textArea]}
-                    value={editDescription}
-                    onChangeText={setEditDescription}
-                    multiline
-                    numberOfLines={3}
-                    placeholderTextColor="#9ca3af"
-                  />
-                </View>
+            <View style={styles.modalActions}>
 
-                <View style={styles.modalActions}>
-                  <TouchableOpacity 
-                    style={[styles.button, styles.cancelButton]}
-                    onPress={() => setEditModalVisible(false)}
-                  >
-                    <Text style={styles.cancelButtonText}>❌ Cancelar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.button, styles.submitButton]}
-                    onPress={handleSaveEdit}
-                  >
-                    <Text style={styles.submitButtonText}>💾 Guardar</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
+              <TouchableOpacity 
+                style={[styles.button, styles.cancelButton]}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Ionicons name="close-circle-outline" size={20} color="#dc2626" />
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.button, styles.submitButton]}
+                onPress={handleSaveEdit}
+              >
+                <Ionicons name="save-outline" size={20} color="#ffffff" />
+                <Text style={styles.submitButtonText}>Guardar</Text>
+              </TouchableOpacity>
+
+            </View>
+
           </View>
-        </View>
-        </ScrollView>
-      </Modal>
+        )}
+      </View>
     </View>
-  );
+  </ScrollView>
+</Modal>
+
+</View>
+);
 }
 
 const styles = StyleSheet.create({
@@ -1115,3 +1142,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
