@@ -108,6 +108,12 @@ export class UsuarioController {
         return this.currentUser;
     }
 
+    // Cierra la sesión del usuario actual
+    logout() {
+        this.currentUser = null;
+        this.notifyListeners();
+    }
+
     async editarPerfil(id, nuevoNombre, nuevoEmail){
         try{
             Usuario.validarNombre(nuevoNombre);
@@ -150,6 +156,31 @@ export class UsuarioController {
             );
         } catch (error){
             console.error('Error al cambiar contraseña:', error);
+            throw error;
+        }
+    }
+
+    // Preferencias / settings
+    async obtenerPreferencias(id){
+        try{
+            return await DatabaseService.getUserSettings(id);
+        } catch (error){
+            console.error('Error al obtener preferencias:', error);
+            return {};
+        }
+    }
+
+    async actualizarPreferencias(id, prefs){
+        try{
+            const updated = await DatabaseService.updateUserSettings(id, prefs);
+            // si el usuario actual es el mismo, actualizar currentUser.settings
+            if (this.currentUser && this.currentUser.id === id) {
+                this.currentUser = { ...this.currentUser, settings: updated };
+                this.notifyListeners();
+            }
+            return updated;
+        } catch (error){
+            console.error('Error al actualizar preferencias:', error);
             throw error;
         }
     }

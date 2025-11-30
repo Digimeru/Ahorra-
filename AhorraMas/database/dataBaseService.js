@@ -31,6 +31,7 @@ class DatabaseService {
                     nombre TEXT NOT NULL,
                     email TEXT UNIQUE,
                     password TEXT,
+                    settings TEXT,
                     fecha_registro DATETIME
                 );
             `);
@@ -63,6 +64,12 @@ class DatabaseService {
                 await this.db.execAsync(`CREATE INDEX IF NOT EXISTS idx_transacciones_usuario_fecha ON transacciones(usuario_id, fecha);`);
                 await this.db.execAsync(`CREATE INDEX IF NOT EXISTS idx_transacciones_categoria ON transacciones(categoria);`);
                 await this.db.execAsync(`CREATE INDEX IF NOT EXISTS idx_presupuestos_usuario_mes ON presupuestos(usuario_id, mes);`);
+                // Ensure settings column exists for older DBs
+                try {
+                    await this.db.execAsync(`ALTER TABLE usuarios ADD COLUMN settings TEXT;`);
+                } catch (e) {
+                    // ignore if column already exists
+                }
             } catch (e) {
                 console.warn('No se pudieron crear índices:', e.message || e);
             }
@@ -93,10 +100,19 @@ class DatabaseService {
     async getAll(){
         if (Platform.OS === 'web'){
             const data = localStorage.getItem(this.storageKey);
-            return data ? JSON.parse(data) : [];
+            const parsed = data ? JSON.parse(data) : [];
+            // ensure settings is parsed
+            return parsed.map(u => ({
+                ...u,
+                settings: u.settings ? JSON.parse(u.settings) : {}
+            }));
         } else {
             await this.ensureDb();
-            return await this.db.getAllAsync('SELECT * FROM usuarios ORDER BY id DESC');
+            const rows = await this.db.getAllAsync('SELECT * FROM usuarios ORDER BY id DESC');
+            return rows.map(r => ({
+                ...r,
+                settings: r.settings ? JSON.parse(r.settings) : {}
+            }));
         }
     }
 
@@ -106,8 +122,12 @@ class DatabaseService {
             return usuarios.find(u => u.id === id) || null;
         } else {
             await this.ensureDb();
-            const result = await this.db.getFirstAsync('SELECT * FROM usuarios WHERE id = ?', id);
-            return result || null;
+            const result = await this.db.getFirstAsync('SELECT * FROM usuarios WHERE id = ?', [id]);
+            if (!result) return null;
+            return {
+                ...result,
+                settings: result.settings ? JSON.parse(result.settings) : {}
+            };
         }
     }
 
@@ -118,7 +138,11 @@ class DatabaseService {
         } else {
             await this.ensureDb();
             const result = await this.db.getFirstAsync('SELECT * FROM usuarios WHERE email = ?', [email]);
-            return result || null;
+            if (!result) return null;
+            return {
+                ...result,
+                settings: result.settings ? JSON.parse(result.settings) : {}
+            };
         }
     }
 
@@ -137,6 +161,7 @@ class DatabaseService {
                 nombre: nombre.trim(),
                 email: email.toLowerCase().trim(),
                 password: password,
+                settings: {},
                 fecha_registro: new Date().toISOString()
             };
 
@@ -155,6 +180,7 @@ class DatabaseService {
                     nombre: nombre.trim(),
                     email: email.toLowerCase().trim(),
                     password: password,
+                    settings: {},
                     fecha_registro: new Date().toISOString()
                 };
             } catch (error) {
@@ -221,6 +247,39 @@ class DatabaseService {
                 [nuevaPassword, id]
             );
             return await this.getById(id);
+        }
+    }
+
+    // Preferencias de usuario almacenadas en la columna 'settings' (JSON)
+    async getUserSettings(id) {
+        if (Platform.OS === 'web'){
+            const usuarios = await this.getAll();
+            const u = usuarios.find(x => x.id === id);
+            return u ? (u.settings || {}) : {};
+        } else {
+            await this.ensureDb();
+            const row = await this.getById(id);
+            return row ? (row.settings || {}) : {};
+        }
+    }
+
+    async updateUserSettings(id, settingsObj) {
+        if (Platform.OS === 'web'){
+            const usuarios = await this.getAll();
+            const idx = usuarios.findIndex(u => u.id === id);
+            if (idx === -1) throw new Error('Usuario no encontrado');
+            usuarios[idx].settings = { ...(usuarios[idx].settings || {}), ...settingsObj };
+            // store as JSON string to maintain compatibility
+            const raw = usuarios.map(u => ({ ...u, settings: JSON.stringify(u.settings) }));
+            localStorage.setItem(this.storageKey, JSON.stringify(raw));
+            return usuarios[idx].settings;
+        } else {
+            await this.ensureDb();
+            const current = await this.getById(id);
+            if (!current) throw new Error('Usuario no encontrado');
+            const merged = { ...(current.settings || {}), ...settingsObj };
+            await this.db.runAsync('UPDATE usuarios SET settings = ? WHERE id = ?', [JSON.stringify(merged), id]);
+            return merged;
         }
     }
 
@@ -392,6 +451,40 @@ class DatabaseService {
                 mes,
                 usuario_id: usuarioId
             };
+        }
+    }
+
+    async updatePresupuesto(id, categoria, monto, mes, usuarioId) {
+        if (Platform.OS === 'web'){
+            const presupuestos = await this.obtenerPresupuestos();
+            const idx = presupuestos.findIndex(p => p.id === id && p.usuario_id === usuarioId);
+            if (idx === -1) throw new Error('Presupuesto no encontrado');
+            presupuestos[idx].categoria = categoria;
+            presupuestos[idx].monto = monto;
+            presupuestos[idx].mes = mes;
+            localStorage.setItem(this.storageKeyPresupuestos, JSON.stringify(presupuestos));
+            return presupuestos[idx];
+        } else {
+            await this.ensureDb();
+            await this.db.runAsync(
+                'UPDATE presupuestos SET categoria = ?, monto = ?, mes = ? WHERE id = ? AND usuario_id = ?',
+                [categoria, monto, mes, id, usuarioId]
+            );
+            const rows = await this.db.getAllAsync('SELECT * FROM presupuestos WHERE id = ? AND usuario_id = ?', [id, usuarioId]);
+            return rows[0] || null;
+        }
+    }
+
+    async deletePresupuesto(id, usuarioId) {
+        if (Platform.OS === 'web'){
+            const presupuestos = await this.obtenerPresupuestos();
+            const filtrados = presupuestos.filter(p => !(p.id === id && p.usuario_id === usuarioId));
+            localStorage.setItem(this.storageKeyPresupuestos, JSON.stringify(filtrados));
+            return;
+        } else {
+            await this.ensureDb();
+            await this.db.runAsync('DELETE FROM presupuestos WHERE id = ? AND usuario_id = ?', [id, usuarioId]);
+            return;
         }
     }
 

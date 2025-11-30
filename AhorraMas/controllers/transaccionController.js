@@ -35,6 +35,7 @@ export class TransaccionController {
                 usuarioId
             );
 
+            console.log('[TransaccionController] nueva transaccion agregada, notificando listeners');
             this.notifyListeners();
             return new Transaccion(
                 nuevaTransaccion.id,
@@ -111,6 +112,7 @@ export class TransaccionController {
     async eliminarTransaccion(id, usuarioId) {
         try {
             await DatabaseService.eliminarTransaccion(id, usuarioId);
+            console.log('[TransaccionController] transaccion eliminada, notificando listeners');
             this.notifyListeners();
         } catch (error) {
             console.error('Error al eliminar transacción:', error);
@@ -125,6 +127,38 @@ export class TransaccionController {
         } catch (error) {
             console.error('Error al obtener presupuestos:', error);
             throw new Error('No se pudieron cargar los presupuestos');
+        }
+    }
+
+    async agregarPresupuesto(categoria, monto, mes, usuarioId) {
+        try {
+            const nuevo = await DatabaseService.agregarPresupuesto(categoria, monto, mes, usuarioId);
+            this.notifyListeners();
+            return nuevo;
+        } catch (error) {
+            console.error('Error al agregar presupuesto:', error);
+            throw error;
+        }
+    }
+
+    async actualizarPresupuesto(id, categoria, monto, mes, usuarioId) {
+        try {
+            const actualizado = await DatabaseService.updatePresupuesto(id, categoria, monto, mes, usuarioId);
+            this.notifyListeners();
+            return actualizado;
+        } catch (error) {
+            console.error('Error al actualizar presupuesto:', error);
+            throw error;
+        }
+    }
+
+    async eliminarPresupuesto(id, usuarioId) {
+        try {
+            await DatabaseService.deletePresupuesto(id, usuarioId);
+            this.notifyListeners();
+        } catch (error) {
+            console.error('Error al eliminar presupuesto:', error);
+            throw error;
         }
     }
 

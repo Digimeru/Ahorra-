@@ -1,17 +1,7 @@
-import { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
-  StyleSheet, 
-  TextInput,
-  Modal,
-  Alert 
-} from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import  UsuarioController  from '../controllers/usuarioController';
-import { useCallback } from 'react'; 
 import { useFocusEffect } from '@react-navigation/native'; 
 
 export default function Perfil({ navigation }) {
@@ -20,23 +10,44 @@ export default function Perfil({ navigation }) {
   const [user, setUser] = useState({
     name: '',
     email: '',
-    phone: '+56 9 1234 5678'
+    phone: 'No registrado'
   });
   useFocusEffect(
     useCallback(() => {
-      if (currentUser) {
+      let mounted = true;
+      const load = async () => {
+        if (!currentUser) {
+          navigation.reset({ index: 0, routes: [{ name: 'AutenScreen' }] });
+          return;
+        }
+
+        // Cargar datos del usuario y preferencias
         setUser({
           name: currentUser.nombre,
           email: currentUser.email,
-          phone: 'No registrado' 
+          phone: 'No registrado'
         });
-      
-        setEditName(currentUser.nombre);
-      } else {
-     
-        navigation.reset({ index: 0, routes: [{ name: 'AutenScreen' }] });
-      }
-    }, [])
+
+        setEditName(currentUser.nombre || '');
+
+        try {
+          const prefs = await UsuarioController.obtenerPreferencias(currentUser.id);
+          if (!mounted) return;
+          // Notificaciones
+          if (prefs.notifications) {
+            setNotifications(prefs.notifications);
+          }
+          // Moneda
+          if (prefs.currency) {
+            setSelectedCurrency(prefs.currency);
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+      load();
+      return () => { mounted = false; };
+    }, [currentUser])
   );
 
   // Estados para los modales
@@ -48,8 +59,8 @@ export default function Perfil({ navigation }) {
   const [exportModal, setExportModal] = useState(false);
 
   // Estados para formularios
-  const [editName, setEditName] = useState(user.name);
-  const [editPhone, setEditPhone] = useState(user.phone);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -73,7 +84,10 @@ export default function Perfil({ navigation }) {
         currentUser.email 
       );
 
-      UsuarioController.setCurrentUser(usuarioActualizado);
+
+      // Obtener preferencias existentes y mantenerlas
+      const prefs = await UsuarioController.obtenerPreferencias(currentUser.id);
+      UsuarioController.setCurrentUser({ ...usuarioActualizado, settings: prefs });
 
       setUser({
         ...user,
@@ -90,34 +104,58 @@ export default function Perfil({ navigation }) {
   };
 
   const handleChangePassword = () => {
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
-      return;
-    }
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-    setSecurityModal(false);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    Alert.alert('Éxito', 'Contraseña cambiada correctamente');
+    (async () => {
+      try {
+        if (newPassword !== confirmPassword) {
+          Alert.alert('Error', 'Las contraseñas no coinciden');
+          return;
+        }
+        if (newPassword.length < 6) {
+          Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+          return;
+        }
+        if (!currentUser) return;
+
+        const usuarioActualizado = await UsuarioController.cambiarPassword(currentUser.id, newPassword, confirmPassword);
+        // Mantener preferencias
+        const prefs = await UsuarioController.obtenerPreferencias(currentUser.id);
+        UsuarioController.setCurrentUser({ ...usuarioActualizado, settings: prefs });
+
+        setSecurityModal(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        Alert.alert('Éxito', 'Contraseña cambiada correctamente');
+      } catch (error) {
+        Alert.alert('Error', error.message || 'No se pudo cambiar la contraseña');
+      }
+    })();
   };
 
   const handleSaveNotifications = () => {
-    setNotificationsModal(false);
-    Alert.alert('Éxito', 'Preferencias de notificaciones guardadas');
+    (async () => {
+      try {
+        if (!currentUser) return;
+        await UsuarioController.actualizarPreferencias(currentUser.id, { notifications });
+        setNotificationsModal(false);
+        Alert.alert('Éxito', 'Preferencias de notificaciones guardadas');
+      } catch (error) {
+        Alert.alert('Error', error.message || 'No se pudieron guardar las notificaciones');
+      }
+    })();
   };
 
   const handleSaveCurrency = () => {
-    setCurrencyModal(false);
-    Alert.alert('Éxito', 'Moneda actualizada correctamente');
-  };
-
-  const handleSaveReports = () => {
-    setReportsModal(false);
-    Alert.alert('Éxito', 'Configuración de reportes guardada');
+    (async () => {
+      try {
+        if (!currentUser) return;
+        await UsuarioController.actualizarPreferencias(currentUser.id, { currency: selectedCurrency });
+        setCurrencyModal(false);
+        Alert.alert('Éxito', 'Moneda actualizada correctamente');
+      } catch (error) {
+        Alert.alert('Error', error.message || 'No se pudo actualizar la moneda');
+      }
+    })();
   };
 
   const handleExportData = () => {
@@ -272,12 +310,6 @@ export default function Perfil({ navigation }) {
                 style={styles.switchRow}
                 onPress={() => toggleNotification(key)}
               >
-                <Text style={styles.switchLabel}>
-                  {key === 'budgetAlerts' && 'Alertas de presupuesto'}
-                  {key === 'expenseAlerts' && 'Alertas de gastos'}
-                  {key === 'monthlyReports' && 'Reportes mensuales'}
-                  {key === 'securityAlerts' && 'Alertas de seguridad'}
-                </Text>
                 <View style={[styles.switch, value && styles.switchActive]}>
                   <View style={[styles.switchThumb, value && styles.switchThumbActive]} />
                 </View>
@@ -363,115 +395,6 @@ export default function Perfil({ navigation }) {
     </Modal>
   );
 
-  // Modal de Reportes
-  const ReportsModal = () => (
-    <Modal
-      visible={reportsModal}
-      animationType="fade"
-      transparent={true}
-      onRequestClose={() => setReportsModal(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Configurar Reportes</Text>
-          
-          <View style={styles.form}>
-            <Text style={styles.sectionSubtitle}>Frecuencia de Reportes</Text>
-            
-            {['diario', 'semanal', 'mensual', 'trimestral'].map(freq => (
-              <TouchableOpacity
-                key={freq}
-                style={[
-                  styles.reportOption,
-                  reportFrequency === freq && styles.reportOptionSelected
-                ]}
-                onPress={() => setReportFrequency(freq)}
-              >
-                <Text style={[
-                  styles.reportText,
-                  reportFrequency === freq && styles.reportTextSelected
-                ]}>
-                  {freq === 'diario' && 'Reporte Diario'}
-                  {freq === 'semanal' && 'Reporte Semanal'}
-                  {freq === 'mensual' && 'Reporte Mensual'}
-                  {freq === 'trimestral' && 'Reporte Trimestral'}
-                </Text>
-                {reportFrequency === freq && (
-                  <Text style={styles.checkmark}>✓</Text>
-                )}
-              </TouchableOpacity>
-            ))}
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={[styles.button, styles.cancelButton]}
-                onPress={() => setReportsModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.button, styles.submitButton]}
-                onPress={handleSaveReports}
-              >
-                <Text style={styles.submitButtonText}>Guardar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-
-  // Modal de Exportar Datos
-  const ExportModal = () => (
-    <Modal
-      visible={exportModal}
-      animationType="fade"
-      transparent={true}
-      onRequestClose={() => setExportModal(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Exportar Datos</Text>
-          
-          <View style={styles.form}>
-            <Text style={styles.sectionSubtitle}>Selecciona el formato de exportación</Text>
-            
-            {['PDF', 'Excel', 'CSV'].map(format => (
-              <TouchableOpacity
-                key={format}
-                style={styles.exportOption}
-                onPress={handleExportData}
-              >
-                <Text style={styles.exportIcon}>
-                  {format === 'PDF' && '📄'}
-                  {format === 'Excel' && '📊'}
-                  {format === 'CSV' && '📋'}
-                </Text>
-                <View style={styles.exportContent}>
-                  <Text style={styles.exportTitle}>Exportar como {format}</Text>
-                  <Text style={styles.exportDescription}>
-                    Descarga tus datos financieros en formato {format}
-                  </Text>
-                </View>
-                <Text style={styles.optionArrow}>›</Text>
-              </TouchableOpacity>
-            ))}
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={[styles.button, styles.cancelButton]}
-                onPress={() => setExportModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-
   return (
     <View style={styles.container}>
       {/* Header - Pegado arriba */}
@@ -527,47 +450,6 @@ export default function Perfil({ navigation }) {
             </View>
             <Text style={styles.optionArrow}>›</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.optionButton}
-            onPress={() => setNotificationsModal(true)}
-          >
-            <Text style={styles.optionIcon}>🔔</Text>
-            <View style={styles.optionContent}>
-              <Text style={styles.optionTitle}>Notificaciones</Text>
-              <Text style={styles.optionDescription}>Configura tus alertas</Text>
-            </View>
-            <Text style={styles.optionArrow}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Preferencias */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferencias</Text>
-          
-          <TouchableOpacity 
-            style={styles.optionButton}
-            onPress={() => setCurrencyModal(true)}
-          >
-            <Text style={styles.optionIcon}>💵</Text>
-            <View style={styles.optionContent}>
-              <Text style={styles.optionTitle}>Moneda</Text>
-              <Text style={styles.optionDescription}>Peso Mexicano (MXN)</Text>
-            </View>
-            <Text style={styles.optionArrow}>›</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.optionButton}
-            onPress={() => setReportsModal(true)}
-          >
-            <Text style={styles.optionIcon}>📊</Text>
-            <View style={styles.optionContent}>
-              <Text style={styles.optionTitle}>Reportes</Text>
-              <Text style={styles.optionDescription}>Configura tus reportes mensuales</Text>
-            </View>
-            <Text style={styles.optionArrow}>›</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Acciones Importantes */}
@@ -575,20 +457,12 @@ export default function Perfil({ navigation }) {
           <Text style={styles.sectionTitle}>Acciones</Text>
           
           <TouchableOpacity 
-            style={[styles.optionButton, styles.exportButton]}
-            onPress={() => setExportModal(true)}
-          >
-            <Text style={styles.optionIcon}>📤</Text>
-            <View style={styles.optionContent}>
-              <Text style={styles.optionTitle}>Exportar Datos</Text>
-              <Text style={styles.optionDescription}>Descarga tu información financiera</Text>
-            </View>
-            <Text style={styles.optionArrow}>›</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
             style={[styles.optionButton, styles.logoutButton]}
-            onPress={() => navigation.navigate('AutenScreen')}
+            onPress={() => {
+              // Cerrar sesión segura: limpiar usuario en el controlador y reset navigation
+              UsuarioController.logout();
+              navigation.reset({ index: 0, routes: [{ name: 'AutenScreen' }] });
+            }}
           >
             <Text style={styles.optionIcon}>🚪</Text>
             <View style={styles.optionContent}>
@@ -605,8 +479,6 @@ export default function Perfil({ navigation }) {
       <SecurityModal />
       <NotificationsModal />
       <CurrencyModal />
-      <ReportsModal />
-      <ExportModal />
     </View>
     
   );

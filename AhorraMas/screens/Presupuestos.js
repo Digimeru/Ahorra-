@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import TransaccionController from '../controllers/transaccionController';
+import UsuarioController from '../controllers/usuarioController';
 
-// Datos de ejemplo (en una app real vendrían de un contexto o estado global)
 const EXPENSE_CATEGORIES = ['Alimentación', 'Transporte', 'Ocio', 'Servicios', 'Salud', 'Educación', 'Otros Gastos'];
 
 export default function Presupuesto({ navigation }) {
@@ -10,75 +12,55 @@ export default function Presupuesto({ navigation }) {
   const [editingBudget, setEditingBudget] = useState(null);
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
-  const [month, setMonth] = useState(
-    new Date().toISOString().slice(0, 7) // YYYY-MM formato
-  );
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
 
-  // Datos de ejemplo (Se tienen que reemplazar con contexto)
-  const [budgets, setBudgets] = useState([
-    {
-      id: '1',
-      category: 'Alimentación',
-      amount: 400000,
-      month: new Date().toISOString().slice(0, 7)
-    },
-    {
-      id: '2', 
-      category: 'Transporte',
-      amount: 150000,
-      month: new Date().toISOString().slice(0, 7)
-    }
-  ]);
+  const [budgets, setBudgets] = useState([]);
+  const [resumen, setResumen] = useState({ gastosPorCategoria: {} });
+  const [prefs, setPrefs] = useState({ notifications: { budgetAlerts: true } });
+  const [notifiedOver, setNotifiedOver] = useState(new Set());
+  const [notifiedNear, setNotifiedNear] = useState(new Set());
 
-  const [transactions] = useState([
-    { id: '1', type: 'expense', category: 'Alimentación', amount: 350000, date: new Date().toISOString() },
-    { id: '2', type: 'expense', category: 'Transporte', amount: 120000, date: new Date().toISOString() },
-    { id: '3', type: 'expense', category: 'Ocio', amount: 80000, date: new Date().toISOString() }
-  ]);
-
+  const currentUser = UsuarioController.getCurrentUser();
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const currentBudgets = budgets.filter((b) => b.month === currentMonth);
+  const currentBudgets = budgets.filter((b) => (b.mes || b.month) === currentMonth);
 
-  // Calcular gastos para cada presupuesto
+  // Calcular gastos para cada presupuesto 
   const getBudgetProgress = (budget) => {
-    const budgetMonth = budget.month;
-    const [year, monthNum] = budgetMonth.split('-').map(Number);
-
-    const spent = transactions
-      .filter((t) => {
-        if (t.type !== 'expense' || t.category !== budget.category) return false;
-        const transactionDate = new Date(t.date);
-        return (
-          transactionDate.getFullYear() === year &&
-          transactionDate.getMonth() === monthNum - 1
-        );
-      })
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const percentage = (spent / budget.amount) * 100;
-    const remaining = budget.amount - spent;
-
+    const catKey = budget.categoria || budget.category;
+    let gasto = 0;
+    if (resumen && resumen.gastosPorCategoria) {
+      const gp = resumen.gastosPorCategoria;
+      if (Array.isArray(gp)) {
+        const found = gp.find(item => (item.categoria === catKey || item.category === catKey));
+        gasto = found ? (found.monto || found.amount || 0) : 0;
+      } else if (typeof gp === 'object') {
+        gasto = gp[catKey] || 0;
+      }
+    }
+    const spent = gasto;
+    const target = budget.monto || budget.amount || 0;
+    const percentage = target > 0 ? (spent / target) * 100 : 0;
+    const remaining = target - spent;
+    console.log(`[Presupuestos] getBudgetProgress: id=${budget.id} catKey=${catKey} spent=${spent} target=${target} pct=${percentage.toFixed(1)}`);
     return { spent, percentage, remaining };
   };
 
   // Alertas de presupuesto
   useEffect(() => {
+    if (!prefs || !prefs.notifications || !prefs.notifications.budgetAlerts) return;
+
     currentBudgets.forEach((budget) => {
       const { percentage, remaining } = getBudgetProgress(budget);
-      
-      if (percentage > 100) {
-        Alert.alert(
-          '¡Presupuesto excedido!',
-          `Has superado el presupuesto de ${budget.category} por ${formatCurrency(Math.abs(remaining))}`
-        );
-      } else if (percentage >= 90 && percentage <= 100) {
-        Alert.alert(
-          '¡Atención!',
-          `Estás cerca del límite de tu presupuesto de ${budget.category}. Te quedan ${formatCurrency(remaining)}`
-        );
+      // notificar excedido
+      if (percentage > 100 && !notifiedOver.has(budget.id)) {
+        Alert.alert('¡Presupuesto excedido!', `Has superado el presupuesto de ${budget.categoria || budget.category} por ${formatCurrency(Math.abs(remaining))}`);
+        setNotifiedOver(prev => new Set(prev).add(budget.id));
+      } else if (percentage >= 90 && percentage <= 100 && !notifiedNear.has(budget.id)) {
+        Alert.alert('¡Atención!', `Estás cerca del límite de tu presupuesto de ${budget.categoria || budget.category}. Te quedan ${formatCurrency(remaining)}`);
+        setNotifiedNear(prev => new Set(prev).add(budget.id));
       }
     });
-  }, [transactions, currentBudgets.length]);
+  }, [resumen, budgets, prefs]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-CL', {
@@ -88,53 +70,52 @@ export default function Presupuesto({ navigation }) {
   };
 
   const handleSubmit = () => {
-    if (!category || !amount) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
-      return;
-    }
+    (async () => {
+      try {
+        if (!currentUser) {
+          Alert.alert('Error', 'Usuario no autenticado');
+          return;
+        }
+        if (!category || !amount) {
+          Alert.alert('Error', 'Por favor completa todos los campos');
+          return;
+        }
 
-    // Verificar si ya existe un presupuesto para esta categoría y mes
-    const existingBudget = budgets.find(
-      (b) => b.category === category && b.month === month && b.id !== editingBudget?.id
-    );
+        // Verificar si ya existe un presupuesto para esta categoría y mes
+        const existingBudget = budgets.find((b) => b.category === category && b.month === month && b.id !== editingBudget?.id);
+        if (existingBudget) {
+          Alert.alert('Error', 'Ya existe un presupuesto para esta categoría en este mes');
+          return;
+        }
 
-    if (existingBudget) {
-      Alert.alert('Error', 'Ya existe un presupuesto para esta categoría en este mes');
-      return;
-    }
+        if (editingBudget) {
+          // Actualizar presupuesto en DB
+          await TransaccionController.actualizarPresupuesto(editingBudget.id, category, parseFloat(amount), month, currentUser.id);
+          Alert.alert('Éxito', 'Presupuesto actualizado');
+        } else {
+          // Crear nuevo presupuesto
+          await TransaccionController.agregarPresupuesto(category, parseFloat(amount), month, currentUser.id);
+          Alert.alert('Éxito', 'Presupuesto creado');
+        }
 
-    if (editingBudget) {
-      // Actualizar presupuesto existente
-      setBudgets(budgets.map(b => 
-        b.id === editingBudget.id 
-          ? { ...b, category, amount: parseFloat(amount), month }
-          : b
-      ));
-      Alert.alert('Éxito', 'Presupuesto actualizado');
-    } else {
-      // Crear nuevo presupuesto
-      const newBudget = {
-        id: Date.now().toString(),
-        category,
-        amount: parseFloat(amount),
-        month,
-      };
-      setBudgets([...budgets, newBudget]);
-      Alert.alert('Éxito', 'Presupuesto creado');
-    }
-
-    setDialogOpen(false);
-    setEditingBudget(null);
-    setCategory('');
-    setAmount('');
-    setMonth(currentMonth);
+        // refrescar datos
+        await loadData();
+        setDialogOpen(false);
+        setEditingBudget(null);
+        setCategory('');
+        setAmount('');
+        setMonth(currentMonth);
+      } catch (error) {
+        Alert.alert('Error', error.message || 'No se pudo guardar el presupuesto');
+      }
+    })();
   };
 
   const handleEdit = (budget) => {
     setEditingBudget(budget);
-    setCategory(budget.category);
-    setAmount(budget.amount.toString());
-    setMonth(budget.month);
+    setCategory(budget.categoria || budget.category);
+    setAmount((budget.monto || budget.amount).toString());
+    setMonth(budget.mes || budget.month);
     setDialogOpen(true);
   };
 
@@ -148,8 +129,19 @@ export default function Presupuesto({ navigation }) {
           text: 'Eliminar', 
           style: 'destructive',
           onPress: () => {
-            setBudgets(budgets.filter(b => b.id !== id));
-            Alert.alert('Éxito', 'Presupuesto eliminado');
+            (async () => {
+              try {
+                if (!currentUser) {
+                  Alert.alert('Error', 'Usuario no autenticado');
+                  return;
+                }
+                await TransaccionController.eliminarPresupuesto(id, currentUser.id);
+                await loadData();
+                Alert.alert('Éxito', 'Presupuesto eliminado');
+              } catch (error) {
+                Alert.alert('Error', error.message || 'No se pudo eliminar');
+              }
+            })();
           }
         }
       ]
@@ -163,6 +155,43 @@ export default function Presupuesto({ navigation }) {
     setMonth(currentMonth);
     setDialogOpen(true);
   };
+
+  const loadData = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const presupuestos = await TransaccionController.obtenerPresupuestos(currentUser.id, currentMonth);
+      console.log('[Presupuestos] obtenerPresupuestos raw:', presupuestos);
+      const normalized = presupuestos.map(p => ({
+        id: p.id?.toString(),
+        categoria: p.categoria || p.category || p.category,
+        monto: p.monto || p.amount || 0,
+        mes: p.mes || p.month || p.month
+      }));
+      console.log('[Presupuestos] normalized presupuestos:', normalized);
+      setBudgets(normalized);
+
+      const resumenData = await TransaccionController.obtenerResumenMensual(currentUser.id, currentMonth);
+      console.log('[Presupuestos] resumenData:', resumenData);
+      setResumen(resumenData);
+
+      const preferences = await UsuarioController.obtenerPreferencias(currentUser.id);
+      setPrefs(preferences || {});
+    } catch (error) {
+      console.error('Error cargando presupuestos:', error);
+    }
+  }, [currentUser, currentMonth]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  useEffect(() => {
+    const refresh = () => loadData();
+    TransaccionController.addListener(refresh);
+    return () => TransaccionController.removeListener(refresh);
+  }, [loadData]);
 
   // Componente Progress Bar
   const ProgressBar = ({ percentage, color }) => {
@@ -231,13 +260,13 @@ export default function Presupuesto({ navigation }) {
                   <View style={styles.budgetHeader}>
                     <View>
                       <View style={styles.budgetTitleContainer}>
-                        <Text style={styles.budgetTitle}>{budget.category}</Text>
+                        <Text style={styles.budgetTitle}>{budget.categoria || budget.category}</Text>
                         {isOverBudget && (
                           <Text style={styles.warningIcon}>⚠️</Text>
                         )}
                       </View>
                       <Text style={styles.budgetAmount}>
-                        Presupuesto: {formatCurrency(budget.amount)}
+                        Presupuesto: {formatCurrency(budget.monto || budget.amount)}
                       </Text>
                     </View>
                     <View style={styles.budgetActions}>
