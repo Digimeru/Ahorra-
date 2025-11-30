@@ -45,6 +45,21 @@ export class UsuarioController {
             throw error;
         }
     }
+    
+    async buscarUsuarioPorEmail(email){
+        try{
+
+            const emailLimpio = email.toLowerCase().trim();
+            const usuario = await DatabaseService.getByEmail(emailLimpio);
+            if (!usuario) {
+                throw new Error('El correo no está registrado');
+            }
+            return usuario; 
+        } catch (error) {
+            console.error('Error buscarUsuarioPorEmail:', error);
+            throw error;
+        }
+    }
 
     async registrarUsuario(nombre, email, password, confirmarPassword){
         try{

@@ -2,30 +2,69 @@ import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert,KeyboardAvoidingView,Platform,ScrollView} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import UsuarioController  from '../controllers/usuarioController';
 
 export default function RecoveryScreen({ navigation }) {
-  const [email, setEmail] = useState('');
+  const [step, setStep] = useState(1); 
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleRecovery = () => {
-    if (!email) {
-      Alert.alert('Error', 'Por favor escribe tu correo electrónico');
-      return;
-    }
+  const [email, setEmail] = useState('');
+  const [userId, setUserId] = useState(null);
+  const [inputCode, setInputCode] = useState('');
+  const [generatedCode, setGeneratedCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleSendCode = async () => {
+    if (!email) { Alert.alert('Error', 'Escribe tu correo electrónico'); return; }
+    
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+
+      const usuario = await UsuarioController.buscarUsuarioPorEmail(email);
+      setUserId(usuario.id);
+
+      // Generar un código aleatorio y se muestra en la consola 
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      setGeneratedCode(code);
+      
+      console.log(' CÓDIGO DE RECUPERACIÓN:', code);
+
       Alert.alert(
-        'Correo Enviado',
-        `Se han enviado un codigo de recuperación a tu correo: ${email}\n\n`,
-        [
-          { 
-            text: 'Entendido', 
-            onPress: () => navigation.goBack() 
-          }
-        ]
+        'Código Enviado', 
+        'Revisa tu computadora para ver el código de seguridad.',
+        [{ text: 'Ingresar Código', onPress: () => setStep(2) }]
       );
-    }, 1500);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyCode = () => {
+    if (inputCode === generatedCode) {
+      setStep(3); 
+    } else {
+      Alert.alert('Error', 'Código incorrecto. Revisa tu log.');
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) { Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres'); return; }
+    if (newPassword !== confirmPassword) { Alert.alert('Error', 'Las contraseñas no coinciden'); return; }
+
+    setIsLoading(true);
+    try {
+      await UsuarioController.cambiarPassword(userId, newPassword, confirmPassword);
+      Alert.alert('¡Éxito!', 'Contraseña actualizada correctamente.', [
+        { text: 'Iniciar Sesión', onPress: () => navigation.goBack() }
+      ]);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,28 +90,75 @@ export default function RecoveryScreen({ navigation }) {
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Correo Electrónico</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="ejemplo@correo.com"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                editable={!isLoading}
-              />
-            </View>
 
-            <TouchableOpacity 
-              style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={handleRecovery}
-              disabled={isLoading}
-            >
-              <Text style={styles.buttonText}>
-                {isLoading ? 'Enviando...' : 'Enviar Instrucciones'}
-              </Text>
-            </TouchableOpacity>
+          {step === 1 && (
+            <>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Correo Electrónico</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="ejemplo@correo.com"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+              <TouchableOpacity style={[styles.button, isLoading && styles.buttonDisabled]} onPress={handleSendCode} disabled={isLoading}>
+                <Text style={styles.buttonText}>{isLoading ? 'Buscando...' : 'Enviar Código'}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Código de Verificación</Text>
+                <TextInput
+                  style={[styles.input, {textAlign: 'center', letterSpacing: 5, fontSize: 24}]}
+                  placeholder="0000"
+                  value={inputCode}
+                  onChangeText={setInputCode}
+                  keyboardType="numeric"
+                  maxLength={4}
+                />
+                <Text style={{textAlign:'center', marginTop:10, color:'#666', fontStyle:'italic'}}>
+                  (Mira el código en la consola del editor)
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.button} onPress={handleVerifyCode}>
+                <Text style={styles.buttonText}>Verificar</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Nueva Contraseña</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Mínimo 6 caracteres"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Confirmar Contraseña</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Repite la contraseña"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry
+                />
+              </View>
+              <TouchableOpacity style={[styles.button, isLoading && styles.buttonDisabled]} onPress={handleChangePassword} disabled={isLoading}>
+                <Text style={styles.buttonText}>{isLoading ? 'Guardando...' : 'Actualizar Contraseña'}</Text>
+              </TouchableOpacity>
+            </>
+          )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
