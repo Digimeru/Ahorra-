@@ -43,14 +43,13 @@ export default function Transacciones({ navigation }) {
       try {
         const datos = await TransaccionController.obtenerTransacciones(currentUser.id);
         
-        // Traduce campo por campo
+        // Traduce campo por campo 
         const datosTraducidos = datos.map(t => ({
           id: t.id.toString(),
-          type: t.tipo,                
+          type: t.tipo === 'ingreso' ? 'income' : 'expense',  
           amount: t.monto,              
           category: t.categoria,        
           description: t.descripcion,   
-          
           date: t.fecha.split('-').reverse().join('/') 
         }));
 
@@ -60,12 +59,6 @@ export default function Transacciones({ navigation }) {
       }
     }
   };
-  useFocusEffect(
-    useCallback(() => {
-      cargarDatos();
-    }, [currentUser])
-  );
-
   const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
   const formatCurrency = (value) => {
