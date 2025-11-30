@@ -19,10 +19,19 @@ export default function Presupuesto({ navigation }) {
   const [prefs, setPrefs] = useState({ notifications: { budgetAlerts: true } });
   const [notifiedOver, setNotifiedOver] = useState(new Set());
   const [notifiedNear, setNotifiedNear] = useState(new Set());
+  
+  // Estados para el filtro por categorías
+  const [filterCategory, setFilterCategory] = useState('Todas');
+  const [showFilter, setShowFilter] = useState(false);
 
   const currentUser = UsuarioController.getCurrentUser();
   const currentMonth = new Date().toISOString().slice(0, 7);
   const currentBudgets = budgets.filter((b) => (b.mes || b.month) === currentMonth);
+  
+  // Aplicar filtro por categorías a los presupuestos actuales
+  const filteredBudgets = filterCategory === 'Todas' 
+    ? currentBudgets 
+    : currentBudgets.filter((b) => (b.categoria || b.category) === filterCategory);
 
   // Calcular gastos para cada presupuesto 
   const getBudgetProgress = (budget) => {
@@ -227,24 +236,76 @@ export default function Presupuesto({ navigation }) {
       </SafeAreaView>
 
       <ScrollView style={styles.main} contentContainerStyle={styles.scrollContent}>
-        {/* Header con Botón Agregar */}
+        {/* Header con Botón Agregar y Filtro */}
         <View style={styles.sectionHeader}>
           <View>
             <Text style={styles.sectionTitle}>Presupuestos Mensuales</Text>
+            <Text style={styles.filterText}>
+              Filtro: {filterCategory}
+            </Text>
           </View>
-          <TouchableOpacity 
-            style={styles.addButton}
-            onPress={openNewBudgetDialog}
-          >
-            <Text style={styles.addButtonIcon}>+</Text>
-            <Text style={styles.addButtonText}>Nuevo Presupuesto</Text>
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity 
+              style={styles.filterButton}
+              onPress={() => setShowFilter(!showFilter)}
+            >
+              <Text style={styles.filterButtonIcon}>🔍</Text>
+              <Text style={styles.filterButtonText}>Filtrar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={openNewBudgetDialog}
+            >
+              <Text style={styles.addButtonIcon}>+</Text>
+              <Text style={styles.addButtonText}>Nuevo</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
+        {/* Filtro de Categorías */}
+        {showFilter && (
+          <View style={styles.filterContainer}>
+            <Text style={styles.filterLabel}>Filtrar por categoría:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  filterCategory === 'Todas' && styles.filterChipActive
+                ]}
+                onPress={() => setFilterCategory('Todas')}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  filterCategory === 'Todas' && styles.filterChipTextActive
+                ]}>
+                  Todas
+                </Text>
+              </TouchableOpacity>
+              {EXPENSE_CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.filterChip,
+                    filterCategory === cat && styles.filterChipActive
+                  ]}
+                  onPress={() => setFilterCategory(cat)}
+                >
+                  <Text style={[
+                    styles.filterChipText,
+                    filterCategory === cat && styles.filterChipTextActive
+                  ]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Lista de Presupuestos */}
-        {currentBudgets.length > 0 ? (
+        {filteredBudgets.length > 0 ? (
           <View style={styles.budgetsGrid}>
-            {currentBudgets.map((budget) => {
+            {filteredBudgets.map((budget) => {
               const { spent, percentage, remaining } = getBudgetProgress(budget);
               const isOverBudget = percentage > 100;
               const isNearLimit = percentage >= 90 && percentage <= 100;
@@ -342,9 +403,15 @@ export default function Presupuesto({ navigation }) {
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📊</Text>
-            <Text style={styles.emptyTitle}>No hay presupuestos configurados</Text>
+            <Text style={styles.emptyTitle}>
+              {filterCategory === 'Todas' 
+                ? 'No hay presupuestos configurados' 
+                : `No hay presupuestos para ${filterCategory}`}
+            </Text>
             <Text style={styles.emptyDescription}>
-              Crea tu primer presupuesto para empezar a controlar tus gastos
+              {filterCategory === 'Todas'
+                ? 'Crea tu primer presupuesto para empezar a controlar tus gastos'
+                : `No hay presupuestos en la categoría ${filterCategory} para este mes`}
             </Text>
           </View>
         )}
@@ -481,24 +548,94 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
   },
+  filterText: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#16a34a',
-    paddingHorizontal: 6,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
   },
   addButtonIcon: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    marginRight: 8,
+    marginRight: 4,
   },
   addButtonText: {
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  filterButtonIcon: {
+    fontSize: 14,
+    marginRight: 4,
+  },
+  filterButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  // Estilos para el filtro
+  filterContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  filterScroll: {
+    flexGrow: 0,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  filterChipActive: {
+    backgroundColor: '#16a34a',
+    borderColor: '#16a34a',
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  filterChipTextActive: {
+    color: '#ffffff',
   },
   budgetsGrid: {
     gap: 16,
@@ -754,39 +891,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#ffffff',
     fontSize: 14,
-    fontWeight: '600',
-  },
-  // Navegación Inferior
-  navSafeArea: {
-    backgroundColor: '#ffffff',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  navButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navIcon: {
-    fontSize: 20,
-    marginBottom: 4,
-    color: '#94a3b8',
-  },
-  navIconActive: {
-    color: '#16a34a',
-  },
-  navText: {
-    fontSize: 12,
-    color: '#94a3b8',
-  },
-  navTextActive: {
-    color: '#16a34a',
     fontWeight: '600',
   },
 });
